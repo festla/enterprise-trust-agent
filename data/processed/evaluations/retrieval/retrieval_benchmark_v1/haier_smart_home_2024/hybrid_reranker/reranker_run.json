@@ -1,0 +1,170 @@
+{
+  "bm25_index_id": "bm25_index_haier_smart_home_2024_c11b15025cb81be6a4fe8d41",
+  "case_timings": [
+    {
+      "case_id": "haier_2024_cash_and_cash_equivalents",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 35.56440002284944,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9524.937500013039,
+      "total_latency_ms": 9560.50410005264
+    },
+    {
+      "case_id": "haier_2024_accounts_receivable",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 20.33339999616146,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9899.387199897319,
+      "total_latency_ms": 9919.723900035024
+    },
+    {
+      "case_id": "haier_2024_short_term_borrowings",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 18.074800027534366,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9481.967899948359,
+      "total_latency_ms": 9500.046100001782
+    },
+    {
+      "case_id": "haier_2024_revenue",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 17.541800159960985,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 10161.670599831268,
+      "total_latency_ms": 10179.216400021687
+    },
+    {
+      "case_id": "haier_2024_operating_cost",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 15.842899912968278,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 10127.04770010896,
+      "total_latency_ms": 10142.893499927595
+    },
+    {
+      "case_id": "haier_2024_parent_net_profit",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 23.05169985629618,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9783.228100044653,
+      "total_latency_ms": 9806.283199926838
+    },
+    {
+      "case_id": "haier_2024_selling_expenses",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 24.054900044575334,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9363.698799861595,
+      "total_latency_ms": 9387.757300166413
+    },
+    {
+      "case_id": "haier_2024_research_and_development_expenses",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 20.77930001541972,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9171.502099838108,
+      "total_latency_ms": 9192.285500001162
+    },
+    {
+      "case_id": "haier_2024_operating_cash_flow",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 22.0828999299556,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9687.690600054339,
+      "total_latency_ms": 9709.77730001323
+    },
+    {
+      "case_id": "haier_2024_investing_cash_flow",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 20.9735999815166,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9715.560299810022,
+      "total_latency_ms": 9736.53670004569
+    },
+    {
+      "case_id": "haier_2024_overseas_revenue",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 22.581800119951367,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 10108.938500052318,
+      "total_latency_ms": 10131.522699957713
+    },
+    {
+      "case_id": "haier_2024_basic_eps",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 18.09670007787645,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9999.834799906239,
+      "total_latency_ms": 10017.934599891305
+    }
+  ],
+  "chunk_dataset_id": "chunk_dataset_haier_smart_home_2024_6aa9f9aaff9d79d873269575",
+  "dense_index_created": false,
+  "dense_index_id": "vector_index_haier_smart_home_2024_97c2a90a281521f0ba84c7ec",
+  "embedding_spec": {
+    "dimension": 512,
+    "document_prefix": "",
+    "dtype": "float32",
+    "max_sequence_length": 512,
+    "model_name": "BAAI/bge-small-zh-v1.5",
+    "model_version": "534b6bfaaf500e70bcb9f3771cebc940c23b219d",
+    "normalize_embeddings": true,
+    "provider": "sentence_transformers",
+    "query_prefix": "为这个句子生成表示以用于检索相关文章：",
+    "schema_version": 1
+  },
+  "evaluation_set_id": "retrieval_benchmark_v1_haier_smart_home_2024",
+  "hybrid_run_id": "hybrid_run_haier_smart_home_2024_2c20583bad221a4404d479c1",
+  "latency_summary_ms": {
+    "hybrid_mean": 21.58151667875548,
+    "hybrid_p50": 20.77930001541972,
+    "hybrid_p95": 35.56440002284944,
+    "reranker_mean": 9752.122008280518,
+    "reranker_p50": 9715.560299810022,
+    "reranker_p95": 10161.670599831268,
+    "total_mean": 9773.706775003424,
+    "total_p50": 9736.53670004569,
+    "total_p95": 10179.216400021687
+  },
+  "report_id": "haier_smart_home_2024",
+  "reranker_run_id": "reranker_run_haier_smart_home_2024_8b7c7ebf0652c203e90767bf",
+  "reranker_runtime_config": {
+    "batch_size": 4,
+    "device": "cpu",
+    "local_files_only": true,
+    "rerank_candidate_count": 50,
+    "return_count": 50
+  },
+  "reranker_spec": {
+    "architecture": "cross_encoder",
+    "input_template_version": "query_chunk_v1",
+    "max_length": 512,
+    "model_name": "BAAI/bge-reranker-base",
+    "model_revision": "2cfc18c9415c912f9d8155881c133215df768a70",
+    "provider": "sentence_transformers_cross_encoder",
+    "schema_version": 1,
+    "score_type": "cross_encoder_logit"
+  },
+  "retriever_type": "hybrid_reranker",
+  "rrf_config": {
+    "bm25_candidate_count": 50,
+    "dense_candidate_count": 50,
+    "fusion_method": "reciprocal_rank_fusion",
+    "fusion_version": "rrf_v1",
+    "rank_constant": 60,
+    "schema_version": 1
+  },
+  "schema_version": 1,
+  "tokenizer_spec": {
+    "ascii_token_rule": "contiguous_alnum",
+    "boundary_rule": "non_cjk_non_ascii_alnum",
+    "cjk_ngram_size": 2,
+    "cjk_token_rule": "character_ngram",
+    "lowercase_ascii": true,
+    "schema_version": 1,
+    "single_cjk_fallback": "keep_single_character",
+    "tokenizer_name": "deterministic_chinese_bigram",
+    "tokenizer_version": "deterministic_chinese_bigram_v1",
+    "unicode_normalization": "NFKC"
+  }
+}

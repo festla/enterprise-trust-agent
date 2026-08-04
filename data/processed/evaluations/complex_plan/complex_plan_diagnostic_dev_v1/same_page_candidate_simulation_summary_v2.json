@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "experiment_id": "same_page_and_adjacent_candidate_simulation_v2",
+  "experiment_role": "pre_implementation_candidate_selection",
+  "uses_gold_during_selection": false,
+  "uses_gold_only_for_post_selection_scoring": true,
+  "query_specific_rules_used": false,
+  "base_retrieval_changed": false,
+  "candidate_scoring_changed": false,
+  "context_budget_changed": false,
+  "max_expanded_items": 2,
+  "max_expanded_chars": 1600,
+  "source_replay": "data/processed/evaluations/complex_plan/complex_plan_diagnostic_dev_v1/diagnostic_independent_query_replay_v1.jsonl",
+  "source_replay_sha256": "b5ea46de9c12a5df2ee46080edc186cc3692c6d23611d7f972ee40d6e207f07a",
+  "all_queries": {
+    "query_count": 24,
+    "baseline_hit_count": 9,
+    "baseline_hit_rate": 0.375,
+    "projected_hit_count": 9,
+    "projected_hit_rate": 0.375,
+    "hit_count_delta": 0,
+    "recovered_query_count": 0,
+    "regressed_query_count": 0,
+    "projected_outcome_counts": {
+      "adjacent_page_recovered": 2,
+      "base_resolved": 7,
+      "budget_selection_miss": 12,
+      "candidate_generation_coverage_gap": 3
+    }
+  },
+  "diagnostic_targets": {
+    "query_count": 8,
+    "baseline_hit_count": 4,
+    "baseline_hit_rate": 0.5,
+    "projected_hit_count": 4,
+    "projected_hit_rate": 0.5,
+    "hit_count_delta": 0,
+    "recovered_query_count": 0,
+    "regressed_query_count": 0,
+    "projected_outcome_counts": {
+      "adjacent_page_recovered": 1,
+      "base_resolved": 3,
+      "budget_selection_miss": 4
+    }
+  },
+  "controls": {
+    "query_count": 16,
+    "baseline_hit_count": 5,
+    "baseline_hit_rate": 0.3125,
+    "projected_hit_count": 5,
+    "projected_hit_rate": 0.3125,
+    "hit_count_delta": 0,
+    "recovered_query_count": 0,
+    "regressed_query_count": 0,
+    "projected_outcome_counts": {
+      "adjacent_page_recovered": 1,
+      "base_resolved": 4,
+      "budget_selection_miss": 8,
+      "candidate_generation_coverage_gap": 3
+    }
+  },
+  "diagnostic_categories": {
+    "adjacent_page_continued_table": {
+      "query_count": 2,
+      "baseline_hit_count": 2,
+      "baseline_hit_rate": 1.0,
+      "projected_hit_count": 2,
+      "projected_hit_rate": 1.0,
+      "hit_count_delta": 0,
+      "recovered_query_count": 0,
+      "regressed_query_count": 0,
+      "projected_outcome_counts": {
+        "adjacent_page_recovered": 1,
+        "base_resolved": 1
+      }
+    },
+    "confusable_labels": {
+      "query_count": 1,
+      "baseline_hit_count": 0,
+      "baseline_hit_rate": 0.0,
+      "projected_hit_count": 0,
+      "projected_hit_rate": 0.0,
+      "hit_count_delta": 0,
+      "recovered_query_count": 0,
+      "regressed_query_count": 0,
+      "projected_outcome_counts": {
+        "budget_selection_miss": 1
+      }
+    },
+    "confusable_labels_and_adjacent_page": {
+      "query_count": 1,
+      "baseline_hit_count": 1,
+      "baseline_hit_rate": 1.0,
+      "projected_hit_count": 1,
+      "projected_hit_rate": 1.0,
+      "hit_count_delta": 0,
+      "recovered_query_count": 0,
+      "regressed_query_count": 0,
+      "projected_outcome_counts": {
+        "base_resolved": 1
+      }
+    },
+    "multi_fact_structural_retrieval": {
+      "query_count": 1,
+      "baseline_hit_count": 0,
+      "baseline_hit_rate": 0.0,
+      "projected_hit_count": 0,
+      "projected_hit_rate": 0.0,
+      "hit_count_delta": 0,
+      "recovered_query_count": 0,
+      "regressed_query_count": 0,
+      "projected_outcome_counts": {
+        "budget_selection_miss": 1
+      }
+    },
+    "page_window_coverage_gap": {
+      "query_count": 1,
+      "baseline_hit_count": 1,
+      "baseline_hit_rate": 1.0,
+      "projected_hit_count": 1,
+      "projected_hit_rate": 1.0,
+      "hit_count_delta": 0,
+      "recovered_query_count": 0,
+      "regressed_query_count": 0,
+      "projected_outcome_counts": {
+        "base_resolved": 1
+      }
+    },
+    "same_page_sibling": {
+      "query_count": 2,
+      "baseline_hit_count": 0,
+      "baseline_hit_rate": 0.0,
+      "projected_hit_count": 0,
+      "projected_hit_rate": 0.0,
+      "hit_count_delta": 0,
+      "recovered_query_count": 0,
+      "regressed_query_count": 0,
+      "projected_outcome_counts": {
+        "budget_selection_miss": 2
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "evaluation_set_id": "financial_fact_retrieval_dev_v1_hisense_home_2024_bm25",
+  "strategy": "fixed_length",
+  "retriever_type": "bm25",
+  "chunk_dataset_id": "chunk_dataset_hisense_home_2024_e4037c657b0225201366f46b",
+  "index_id": "bm25_index_hisense_home_2024_483c2cb4d0bfca4c01c76e2d",
+  "case_ids": [
+    "fact_006",
+    "smoke_hisense_2024_accounts_receivable",
+    "smoke_hisense_2024_inventory_goods_write_down",
+    "smoke_hisense_2024_ocf",
+    "smoke_hisense_2024_operating_cost",
+    "smoke_hisense_2024_parent_net_profit",
+    "smoke_hisense_2024_revenue",
+    "smoke_hisense_2024_total_assets"
+  ],
+  "case_count": 8,
+  "hit_at_1_count": 3,
+  "hit_at_3_count": 6,
+  "hit_at_5_count": 6,
+  "recall_at_1": 0.375,
+  "recall_at_3": 0.75,
+  "recall_at_5": 0.75,
+  "mrr": 0.5763888888888888,
+  "ndcg_at_1": 0.375,
+  "ndcg_at_3": 0.5952324383928644,
+  "ndcg_at_5": 0.5952324383928644
+}

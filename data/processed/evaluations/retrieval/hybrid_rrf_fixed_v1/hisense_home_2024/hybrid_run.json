@@ -1,0 +1,44 @@
+{
+  "bm25_index_id": "bm25_index_hisense_home_2024_483c2cb4d0bfca4c01c76e2d",
+  "chunk_dataset_id": "chunk_dataset_hisense_home_2024_e4037c657b0225201366f46b",
+  "dense_index_created": false,
+  "dense_index_id": "vector_index_hisense_home_2024_25d43849316e318af26c9094",
+  "embedding_spec": {
+    "dimension": 512,
+    "document_prefix": "",
+    "dtype": "float32",
+    "max_sequence_length": 512,
+    "model_name": "BAAI/bge-small-zh-v1.5",
+    "model_version": "534b6bfaaf500e70bcb9f3771cebc940c23b219d",
+    "normalize_embeddings": true,
+    "provider": "sentence_transformers",
+    "query_prefix": "为这个句子生成表示以用于检索相关文章：",
+    "schema_version": 1
+  },
+  "evaluation_set_id": "hisense_home_2024_hybrid_rrf_fixed_v1",
+  "hybrid_evaluation_top_k": 100,
+  "hybrid_run_id": "hybrid_run_hisense_home_2024_5904fe81479c7f3b3070dc33",
+  "report_id": "hisense_home_2024",
+  "retriever_type": "hybrid_rrf",
+  "rrf_config": {
+    "bm25_candidate_count": 50,
+    "dense_candidate_count": 50,
+    "fusion_method": "reciprocal_rank_fusion",
+    "fusion_version": "rrf_v1",
+    "rank_constant": 60,
+    "schema_version": 1
+  },
+  "schema_version": 1,
+  "tokenizer_spec": {
+    "ascii_token_rule": "contiguous_alnum",
+    "boundary_rule": "non_cjk_non_ascii_alnum",
+    "cjk_ngram_size": 2,
+    "cjk_token_rule": "character_ngram",
+    "lowercase_ascii": true,
+    "schema_version": 1,
+    "single_cjk_fallback": "keep_single_character",
+    "tokenizer_name": "deterministic_chinese_bigram",
+    "tokenizer_version": "deterministic_chinese_bigram_v1",
+    "unicode_normalization": "NFKC"
+  }
+}

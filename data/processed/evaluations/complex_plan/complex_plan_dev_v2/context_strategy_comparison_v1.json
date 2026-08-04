@@ -1,0 +1,169 @@
+{
+  "comparability": {
+    "budgeted_and_unbounded_top_k": 5,
+    "same_answer_generator": true,
+    "same_calculator": true,
+    "same_case_identity": true,
+    "same_core_provider_identity": true,
+    "same_financial_registry": true
+  },
+  "comparison_id": "context_strategy_comparison_v1",
+  "conclusions": {
+    "baseline_completed_count": 17,
+    "budgeted_completed_count": 20,
+    "budgeted_completion_gain_over_baseline": 3,
+    "budgeted_matches_unbounded_completion": true,
+    "expanded_char_reduction": 710278,
+    "expanded_char_reduction_ratio": 0.9911736344949714,
+    "recommendation_status": "accepted_for_frozen_test",
+    "recommended_strategy": "top5_budgeted_adjacent",
+    "top8_completed_count": 19,
+    "unbounded_completed_count": 20
+  },
+  "created_at": "2026-08-03T07:13:57.083321+00:00",
+  "dataset": {
+    "case_count": 20,
+    "path": "data\\evaluation\\complex_plan\\complex_plan_dev_v2.jsonl",
+    "planned_query_count": 66,
+    "sha256": "a56300c499ca4deaffd071fb7caa44104effec81232a549ec68beedb607ed2ab"
+  },
+  "input_artifacts": {
+    "data\\evaluation\\complex_plan\\complex_plan_dev_v2.jsonl": "a56300c499ca4deaffd071fb7caa44104effec81232a549ec68beedb607ed2ab",
+    "data\\processed\\evaluations\\complex_plan\\complex_plan_dev_v2\\context_budget_summary_top5_budgeted_adjacent_page_context_v1.json": "f8eab64ab60e662a2a4f14cd610dd5a7a90af7c4e4337d80a820c4cb0cd83f00",
+    "data\\processed\\evaluations\\complex_plan\\complex_plan_dev_v2\\context_expansion_summary_top5_adjacent_page_context_v1.json": "0e383b6b98c7a240b77a8ee51265d4e4fb30580b7c25db77dca03bdc2099aea4",
+    "data\\processed\\evaluations\\complex_plan\\complex_plan_dev_v2\\gold_oracle_hybrid_reranker_answer_generator_v2.jsonl": "bc539242a81e9b51ac94d72f2c87d2a83f3f51c3790f07fbc9d025f3f9a2f7b9",
+    "data\\processed\\evaluations\\complex_plan\\complex_plan_dev_v2\\gold_oracle_hybrid_reranker_answer_generator_v2_top5_adjacent_page_context_v1.jsonl": "fe8e356dfb9616edd3ffdf11e54de8fc71c0d7901efd40661e62750ace83d59c",
+    "data\\processed\\evaluations\\complex_plan\\complex_plan_dev_v2\\gold_oracle_hybrid_reranker_answer_generator_v2_top5_budgeted_adjacent_page_context_v1.jsonl": "19104ba4ba5b8aae3f54af4375f3f72c45935eff5b87867c276eaf9254fff641",
+    "data\\processed\\evaluations\\complex_plan\\complex_plan_dev_v2\\gold_oracle_hybrid_reranker_answer_generator_v2_top8.jsonl": "da5ad088da95b892bf9c53f378b575be04927b1cc70120881f7cd48e3558706b"
+  },
+  "schema_version": 1,
+  "strategies": {
+    "baseline_top5": {
+      "calculation_trace_count": 10,
+      "case_count": 20,
+      "completed_calculation_count": 10,
+      "completed_count": 17,
+      "completion_rate": 0.85,
+      "context_metrics": {
+        "available": false,
+        "reason": "baseline result does not contain context character audit"
+      },
+      "executed_query_count": 64,
+      "failed_case_ids": [
+        "complex_010",
+        "complex_018",
+        "complex_020"
+      ],
+      "failed_count": 3,
+      "planned_query_count": 66,
+      "planned_query_resolution_rate": 0.9242424242424242,
+      "refused_count": 0,
+      "resolved_query_count": 61,
+      "result_path": "data\\processed\\evaluations\\complex_plan\\complex_plan_dev_v2\\gold_oracle_hybrid_reranker_answer_generator_v2.jsonl",
+      "result_sha256": "bc539242a81e9b51ac94d72f2c87d2a83f3f51c3790f07fbc9d025f3f9a2f7b9",
+      "retriever_ids": [
+        "complex_hybrid_reranker_bge_fixed_v1_registry_fact_resolver_v1"
+      ],
+      "top_k_values": [
+        5
+      ]
+    },
+    "top5_budgeted_adjacent": {
+      "calculation_trace_count": 15,
+      "case_count": 20,
+      "completed_calculation_count": 15,
+      "completed_count": 20,
+      "completion_rate": 1.0,
+      "context_metrics": {
+        "available": true,
+        "base_char_count": 247615,
+        "base_item_count": 330,
+        "base_resolved_query_count": 62,
+        "context_char_growth_ratio": 0.025543686771803,
+        "effective_evidence_ratio": 0.1952662721893491,
+        "expanded_char_count": 6325,
+        "expanded_item_count": 8,
+        "expansion_recovered_query_count": 4,
+        "expansion_required_query_count": 4,
+        "total_char_count": 253940,
+        "total_item_count": 338
+      },
+      "executed_query_count": 66,
+      "failed_case_ids": [],
+      "failed_count": 0,
+      "planned_query_count": 66,
+      "planned_query_resolution_rate": 1.0,
+      "refused_count": 0,
+      "resolved_query_count": 66,
+      "result_path": "data\\processed\\evaluations\\complex_plan\\complex_plan_dev_v2\\gold_oracle_hybrid_reranker_answer_generator_v2_top5_budgeted_adjacent_page_context_v1.jsonl",
+      "result_sha256": "19104ba4ba5b8aae3f54af4375f3f72c45935eff5b87867c276eaf9254fff641",
+      "retriever_ids": [
+        "complex_hybrid_reranker_bge_fixed_v1_adjacent_page_context_v1_gated_lexical_adjacent_budget_v1_registry_context_fact_resolver_v1"
+      ],
+      "top_k_values": [
+        5
+      ]
+    },
+    "top5_unbounded_adjacent": {
+      "calculation_trace_count": 15,
+      "case_count": 20,
+      "completed_calculation_count": 15,
+      "completed_count": 20,
+      "completion_rate": 1.0,
+      "context_metrics": {
+        "available": true,
+        "base_char_count": 247615,
+        "base_item_count": 330,
+        "context_char_growth_ratio": 2.894020959957999,
+        "effective_evidence_ratio": 0.044029352901934625,
+        "expanded_char_count": 716603,
+        "expanded_item_count": 1169,
+        "total_char_count": 964218,
+        "total_item_count": 1499
+      },
+      "executed_query_count": 66,
+      "failed_case_ids": [],
+      "failed_count": 0,
+      "planned_query_count": 66,
+      "planned_query_resolution_rate": 1.0,
+      "refused_count": 0,
+      "resolved_query_count": 66,
+      "result_path": "data\\processed\\evaluations\\complex_plan\\complex_plan_dev_v2\\gold_oracle_hybrid_reranker_answer_generator_v2_top5_adjacent_page_context_v1.jsonl",
+      "result_sha256": "fe8e356dfb9616edd3ffdf11e54de8fc71c0d7901efd40661e62750ace83d59c",
+      "retriever_ids": [
+        "complex_hybrid_reranker_bge_fixed_v1_adjacent_page_context_v1_registry_context_fact_resolver_v1"
+      ],
+      "top_k_values": [
+        5
+      ]
+    },
+    "top8": {
+      "calculation_trace_count": 15,
+      "case_count": 20,
+      "completed_calculation_count": 15,
+      "completed_count": 19,
+      "completion_rate": 0.95,
+      "context_metrics": {
+        "available": false,
+        "reason": "top8 result does not contain context character audit"
+      },
+      "executed_query_count": 66,
+      "failed_case_ids": [
+        "complex_018"
+      ],
+      "failed_count": 1,
+      "planned_query_count": 66,
+      "planned_query_resolution_rate": 0.9848484848484849,
+      "refused_count": 0,
+      "resolved_query_count": 65,
+      "result_path": "data\\processed\\evaluations\\complex_plan\\complex_plan_dev_v2\\gold_oracle_hybrid_reranker_answer_generator_v2_top8.jsonl",
+      "result_sha256": "da5ad088da95b892bf9c53f378b575be04927b1cc70120881f7cd48e3558706b",
+      "retriever_ids": [
+        "complex_hybrid_reranker_bge_fixed_v1_registry_fact_resolver_v1"
+      ],
+      "top_k_values": [
+        8
+      ]
+    }
+  }
+}

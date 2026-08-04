@@ -1,0 +1,487 @@
+schema_version: 1
+
+metrics:
+  - metric_id: revenue
+    display_name_cn: 营业收入
+    display_name_en: Revenue
+    description: 企业在报告期内通过销售商品、提供劳务等日常经营活动形成的收入，结构化事实统一归一化为人民币元。
+    metric_origin: reported
+    statement_type: income_statement
+    period_type: duration
+    default_unit: CNY
+    allowed_scopes:
+      - consolidated
+      - parent_company
+    value_type: decimal
+    is_core_metric: true
+    confusable_metric_ids: []
+    status: active
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - metric_id: net_profit_attributable_to_parent
+    display_name_cn: 归属于母公司所有者的净利润
+    display_name_en: Net Profit Attributable to Owners of the Parent
+    description: 企业在报告期内实现的净利润中归属于母公司所有者的部分，结构化事实统一归一化为人民币元。
+    metric_origin: reported
+    statement_type: income_statement
+    period_type: duration
+    default_unit: CNY
+    allowed_scopes:
+      - consolidated
+    value_type: decimal
+    is_core_metric: true
+    confusable_metric_ids:
+      - net_profit
+    status: active
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - metric_id: net_cash_flow_from_operating_activities
+    display_name_cn: 经营活动产生的现金流量净额
+    display_name_en: Net Cash Flow from Operating Activities
+    description: 企业在报告期内经营活动现金流入减去经营活动现金流出后的净额，结构化事实统一归一化为人民币元。
+    metric_origin: reported
+    statement_type: cash_flow_statement
+    period_type: duration
+    default_unit: CNY
+    allowed_scopes:
+      - consolidated
+      - parent_company
+    value_type: decimal
+    is_core_metric: true
+    confusable_metric_ids: []
+    status: active
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - metric_id: operating_cost
+    display_name_cn: 营业成本
+    display_name_en: Operating Cost
+    description: 企业在报告期内与营业收入相对应的商品、劳务等日常经营活动成本，结构化事实统一归一化为人民币元。
+    metric_origin: reported
+    statement_type: income_statement
+    period_type: duration
+    default_unit: CNY
+    allowed_scopes:
+      - consolidated
+      - parent_company
+    value_type: decimal
+    is_core_metric: true
+    confusable_metric_ids: []
+    status: active
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - metric_id: inventory
+    display_name_cn: 存货
+    display_name_en: Inventory
+    description: 企业在资产负债表日持有以备出售、处于生产过程或将在生产经营中耗用的资产余额，结构化事实统一归一化为人民币元。
+    metric_origin: reported
+    statement_type: balance_sheet
+    period_type: instant
+    default_unit: CNY
+    allowed_scopes:
+      - consolidated
+      - parent_company
+    value_type: decimal
+    is_core_metric: true
+    confusable_metric_ids: []
+    status: active
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - metric_id: accounts_receivable
+    display_name_cn: 应收账款
+    display_name_en: Accounts Receivable
+    description: 企业因销售商品、提供劳务等经营活动形成并在资产负债表日尚未收回的款项余额，结构化事实统一归一化为人民币元。
+    metric_origin: reported
+    statement_type: balance_sheet
+    period_type: instant
+    default_unit: CNY
+    allowed_scopes:
+      - consolidated
+      - parent_company
+    value_type: decimal
+    is_core_metric: true
+    confusable_metric_ids: []
+    status: active
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - metric_id: gross_profit_margin
+    display_name_cn: 毛利率
+    display_name_en: Gross Profit Margin
+    description: 营业收入扣除营业成本后形成的毛利占营业收入的比例，由营业收入和营业成本按照固定公式计算，统一使用百分比表示。
+    metric_origin: derived
+    statement_type: income_statement
+    period_type: duration
+    default_unit: percent
+    allowed_scopes:
+      - consolidated
+      - parent_company
+    value_type: decimal
+    is_core_metric: true
+    confusable_metric_ids: []
+    formula_id: gross_profit_margin_formula
+    status: active
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - metric_id: total_assets
+    display_name_cn: 资产总计
+    display_name_en: Total Assets
+    description: 企业在资产负债表日拥有或控制的全部资产总额，结构化事实统一归一化为人民币元。
+    metric_origin: reported
+    statement_type: balance_sheet
+    period_type: instant
+    default_unit: CNY
+    allowed_scopes:
+      - consolidated
+      - parent_company
+    value_type: decimal
+    is_core_metric: true
+    confusable_metric_ids: []
+    status: active
+    created_at: 2026-08-02T00:00:00+08:00
+    updated_at: 2026-08-02T00:00:00+08:00
+
+  - metric_id: total_liabilities
+    display_name_cn: 负债合计
+    display_name_en: Total Liabilities
+    description: 企业在资产负债表日承担的全部负债总额，结构化事实统一归一化为人民币元。
+    metric_origin: reported
+    statement_type: balance_sheet
+    period_type: instant
+    default_unit: CNY
+    allowed_scopes:
+      - consolidated
+      - parent_company
+    value_type: decimal
+    is_core_metric: true
+    confusable_metric_ids: []
+    status: active
+    created_at: 2026-08-02T00:00:00+08:00
+    updated_at: 2026-08-02T00:00:00+08:00
+
+  - metric_id: selling_expenses
+    display_name_cn: 销售费用
+    display_name_en: Selling Expenses
+    description: 企业在销售商品和提供劳务过程中发生的各项费用，结构化事实统一归一化为人民币元。
+    metric_origin: reported
+    statement_type: income_statement
+    period_type: duration
+    default_unit: CNY
+    allowed_scopes:
+      - consolidated
+      - parent_company
+    value_type: decimal
+    is_core_metric: true
+    confusable_metric_ids: []
+    status: active
+    created_at: 2026-08-02T00:00:00+08:00
+    updated_at: 2026-08-02T00:00:00+08:00
+
+  - metric_id: research_and_development_expenses
+    display_name_cn: 研发费用
+    display_name_en: Research and Development Expenses
+    description: 企业在研究与开发活动中发生并计入当期损益的费用，结构化事实统一归一化为人民币元。
+    metric_origin: reported
+    statement_type: income_statement
+    period_type: duration
+    default_unit: CNY
+    allowed_scopes:
+      - consolidated
+      - parent_company
+    value_type: decimal
+    is_core_metric: true
+    confusable_metric_ids: []
+    status: active
+    created_at: 2026-08-02T00:00:00+08:00
+    updated_at: 2026-08-02T00:00:00+08:00
+
+  - metric_id: net_cash_flow_from_investing_activities
+    display_name_cn: 投资活动产生的现金流量净额
+    display_name_en: Net Cash Flow from Investing Activities
+    description: 企业在报告期内投资活动现金流入减去投资活动现金流出后的净额，结构化事实统一归一化为人民币元。
+    metric_origin: reported
+    statement_type: cash_flow_statement
+    period_type: duration
+    default_unit: CNY
+    allowed_scopes:
+      - consolidated
+      - parent_company
+    value_type: decimal
+    is_core_metric: true
+    confusable_metric_ids: []
+    status: active
+    created_at: 2026-08-02T00:00:00+08:00
+    updated_at: 2026-08-02T00:00:00+08:00
+
+  - metric_id: net_profit
+    display_name_cn: 净利润
+    display_name_en: Net Profit
+    description: 企业在报告期内利润总额扣除所得税费用后的净额，不等同于归属于母公司所有者的净利润，结构化事实统一归一化为人民币元。
+    metric_origin: reported
+    statement_type: income_statement
+    period_type: duration
+    default_unit: CNY
+    allowed_scopes:
+      - consolidated
+      - parent_company
+    value_type: decimal
+    is_core_metric: true
+    confusable_metric_ids:
+      - net_profit_attributable_to_parent
+    status: active
+    created_at: 2026-08-02T00:00:00+08:00
+    updated_at: 2026-08-02T00:00:00+08:00
+
+  - metric_id: selling_and_r_and_d_expense_ratio
+    display_name_cn: 销售费用与研发费用合计占营业收入比例
+    display_name_en: Selling and R&D Expense Ratio
+    description: 销售费用与研发费用之和占营业收入的比例，由三个已核验财务事实按照固定公式计算，统一使用百分比表示。
+    metric_origin: derived
+    statement_type: income_statement
+    period_type: duration
+    default_unit: percent
+    allowed_scopes:
+      - consolidated
+      - parent_company
+    value_type: decimal
+    is_core_metric: false
+    confusable_metric_ids: []
+    formula_id: selling_and_r_and_d_expense_ratio_formula
+    status: active
+    created_at: 2026-08-02T00:00:00+08:00
+    updated_at: 2026-08-02T00:00:00+08:00
+
+  - metric_id: operating_cash_flow_to_net_profit_ratio
+    display_name_cn: 经营活动现金流量净额与净利润比率
+    display_name_en: Operating Cash Flow to Net Profit Ratio
+    description: 经营活动产生的现金流量净额与净利润的比率，由两个已核验财务事实按照固定公式计算，结果使用倍数表示。
+    metric_origin: derived
+    statement_type: financial_summary
+    period_type: duration
+    default_unit: ratio
+    allowed_scopes:
+      - consolidated
+      - parent_company
+    value_type: decimal
+    is_core_metric: false
+    confusable_metric_ids: []
+    formula_id: operating_cash_flow_to_net_profit_ratio_formula
+    status: active
+    created_at: 2026-08-02T00:00:00+08:00
+    updated_at: 2026-08-02T00:00:00+08:00
+
+metric_aliases:
+  - alias_id: revenue_operating_revenue_cn
+    metric_id: revenue
+    alias: 营业收入
+    statement_type: income_statement
+    match_type: exact
+    priority: 10
+    notes: 财务报表中的标准披露名称。
+    status: active
+
+  - alias_id: revenue_revenue_short_cn
+    metric_id: revenue
+    alias: 营收
+    match_type: normalized
+    priority: 20
+    notes: 用户问题中的常见简称。
+    status: active
+
+  - alias_id: revenue_revenue_en
+    metric_id: revenue
+    alias: revenue
+    match_type: normalized
+    priority: 30
+    notes: 英文问题中的常见表达。
+    status: active
+
+  - alias_id: net_profit_parent_listed_shareholders_cn
+    metric_id: net_profit_attributable_to_parent
+    alias: 归属于上市公司股东的净利润
+    statement_type: income_statement
+    statement_scope: consolidated
+    match_type: exact
+    priority: 10
+    notes: A股上市公司年报中的常见标准披露名称。
+    status: active
+
+  - alias_id: net_profit_parent_short_cn
+    metric_id: net_profit_attributable_to_parent
+    alias: 归母净利润
+    statement_scope: consolidated
+    match_type: normalized
+    priority: 20
+    notes: 用户问题和财务分析中的常见简称。
+    status: active
+
+  - alias_id: operating_cash_flow_net_cn
+    metric_id: net_cash_flow_from_operating_activities
+    alias: 经营活动产生的现金流量净额
+    statement_type: cash_flow_statement
+    match_type: exact
+    priority: 10
+    notes: 现金流量表中的标准披露名称。
+    status: active
+
+  - alias_id: operating_cash_flow_short_cn
+    metric_id: net_cash_flow_from_operating_activities
+    alias: 经营现金流净额
+    match_type: normalized
+    priority: 20
+    notes: 用户问题中的常见简称。
+    status: active
+
+  - alias_id: operating_cost_standard_cn
+    metric_id: operating_cost
+    alias: 营业成本
+    statement_type: income_statement
+    match_type: exact
+    priority: 10
+    notes: 利润表中的标准披露名称。
+    status: active
+
+  - alias_id: operating_cost_en
+    metric_id: operating_cost
+    alias: operating cost
+    match_type: normalized
+    priority: 30
+    notes: 英文问题中的常见表达。
+    status: active
+
+  - alias_id: inventory_standard_cn
+    metric_id: inventory
+    alias: 存货
+    statement_type: balance_sheet
+    match_type: exact
+    priority: 10
+    notes: 资产负债表中的标准披露名称。
+    status: active
+
+  - alias_id: inventory_balance_cn
+    metric_id: inventory
+    alias: 存货余额
+    match_type: normalized
+    priority: 20
+    notes: 财务分析和用户问题中的常见表达。
+    status: active
+
+  - alias_id: accounts_receivable_standard_cn
+    metric_id: accounts_receivable
+    alias: 应收账款
+    statement_type: balance_sheet
+    match_type: exact
+    priority: 10
+    notes: 资产负债表中的标准披露名称。
+    status: active
+
+  - alias_id: accounts_receivable_balance_cn
+    metric_id: accounts_receivable
+    alias: 应收账款余额
+    match_type: normalized
+    priority: 20
+    notes: 财务分析和用户问题中的常见表达。
+    status: active
+
+  - alias_id: gross_profit_margin_standard_cn
+    metric_id: gross_profit_margin
+    alias: 毛利率
+    statement_type: income_statement
+    match_type: exact
+    priority: 10
+    notes: 财务分析中的标准指标名称。
+    status: active
+
+  - alias_id: gross_profit_margin_sales_cn
+    metric_id: gross_profit_margin
+    alias: 销售毛利率
+    statement_type: income_statement
+    match_type: normalized
+    priority: 20
+    notes: 用户问题和财务分析中的常见表达。
+    status: active
+
+  - alias_id: gross_profit_margin_en
+    metric_id: gross_profit_margin
+    alias: gross profit margin
+    match_type: normalized
+    priority: 30
+    notes: 英文问题中的常见表达。
+    status: active
+
+  - alias_id: total_assets_standard_cn
+    metric_id: total_assets
+    alias: 资产总计
+    statement_type: balance_sheet
+    match_type: exact
+    priority: 10
+    notes: 合并资产负债表和公司资产负债表中的标准披露名称。
+    status: active
+
+  - alias_id: total_liabilities_standard_cn
+    metric_id: total_liabilities
+    alias: 负债合计
+    statement_type: balance_sheet
+    match_type: exact
+    priority: 10
+    notes: 合并资产负债表和公司资产负债表中的标准披露名称。
+    status: active
+
+  - alias_id: selling_expenses_standard_cn
+    metric_id: selling_expenses
+    alias: 销售费用
+    statement_type: income_statement
+    match_type: exact
+    priority: 10
+    notes: 利润表中的标准披露名称。
+    status: active
+
+  - alias_id: research_and_development_expenses_standard_cn
+    metric_id: research_and_development_expenses
+    alias: 研发费用
+    statement_type: income_statement
+    match_type: exact
+    priority: 10
+    notes: 利润表中的标准披露名称。
+    status: active
+
+  - alias_id: investing_cash_flow_net_standard_cn
+    metric_id: net_cash_flow_from_investing_activities
+    alias: 投资活动产生的现金流量净额
+    statement_type: cash_flow_statement
+    match_type: exact
+    priority: 10
+    notes: 现金流量表中的标准披露名称。
+    status: active
+
+  - alias_id: net_profit_standard_cn
+    metric_id: net_profit
+    alias: 净利润
+    statement_type: income_statement
+    match_type: exact
+    priority: 10
+    notes: 利润表中的标准披露名称，不能与归母净利润混用。
+    status: active
+
+  - alias_id: selling_and_r_and_d_expense_ratio_standard_cn
+    metric_id: selling_and_r_and_d_expense_ratio
+    alias: 销售费用与研发费用合计占营业收入比例
+    statement_type: income_statement
+    match_type: exact
+    priority: 10
+    notes: 由销售费用、研发费用和营业收入确定性计算得到。
+    status: active
+
+  - alias_id: operating_cash_flow_to_net_profit_ratio_standard_cn
+    metric_id: operating_cash_flow_to_net_profit_ratio
+    alias: 经营活动现金流量净额与净利润比率
+    statement_type: financial_summary
+    match_type: exact
+    priority: 10
+    notes: 由经营活动现金流量净额和净利润确定性计算得到。
+    status: active

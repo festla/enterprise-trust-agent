@@ -1,0 +1,23 @@
+{
+  "benchmark_id": "retrieval_benchmark_v1",
+  "case_count": 48,
+  "comparison_path": "data\\processed\\evaluations\\retrieval\\retrieval_benchmark_v1\\analysis\\method_comparison.csv",
+  "failure_candidate_count": 20,
+  "failure_candidates_path": "data\\processed\\evaluations\\retrieval\\retrieval_benchmark_v1\\analysis\\failure_candidates.jsonl",
+  "label_counts": {
+    "all_methods_miss_top5": 6,
+    "large_method_disagreement": 15,
+    "reranker_degraded": 7,
+    "reranker_drops_rrf_top5": 4,
+    "reranker_improved": 8,
+    "rrf_degraded_vs_bm25": 11,
+    "rrf_drops_bm25_top5": 5,
+    "rrf_improved_vs_bm25": 4
+  },
+  "reranker_vs_rrf": {
+    "degraded_count": 15,
+    "improved_count": 18,
+    "unchanged_count": 15
+  },
+  "schema_version": 1
+}

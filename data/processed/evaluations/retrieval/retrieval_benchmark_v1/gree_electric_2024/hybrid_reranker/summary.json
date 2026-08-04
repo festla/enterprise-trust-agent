@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "evaluation_set_id": "retrieval_benchmark_v1_gree_electric_2024",
+  "strategy": "fixed_length",
+  "retriever_type": "hybrid_reranker",
+  "chunk_dataset_id": "chunk_dataset_gree_electric_2024_5b7a6f1f4451d2fb3eb404a7",
+  "index_id": "reranker_run_gree_electric_2024_e7cd81554ae03210c1422011",
+  "case_ids": [
+    "gree_2024_revenue",
+    "gree_2024_parent_net_profit",
+    "gree_2024_total_operating_revenue",
+    "gree_2024_operating_cost",
+    "gree_2024_net_profit",
+    "gree_2024_cash_and_cash_equivalents",
+    "gree_2024_short_term_borrowings",
+    "gree_2024_undistributed_profit",
+    "gree_2024_parent_company_revenue",
+    "gree_2024_manufacturing_revenue",
+    "gree_2024_domestic_main_revenue",
+    "gree_2024_basic_eps"
+  ],
+  "case_count": 12,
+  "hit_at_1_count": 7,
+  "hit_at_3_count": 9,
+  "hit_at_5_count": 10,
+  "recall_at_1": 0.5833333333333334,
+  "recall_at_3": 0.75,
+  "recall_at_5": 0.8333333333333334,
+  "mrr": 0.6970238095238095,
+  "ndcg_at_1": 0.5833333333333334,
+  "ndcg_at_3": 0.6884882922619097,
+  "ndcg_at_5": 0.7243780054346924
+}

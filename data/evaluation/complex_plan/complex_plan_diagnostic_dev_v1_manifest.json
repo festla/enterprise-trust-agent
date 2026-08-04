@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "dataset_id": "complex_plan_diagnostic_dev_v1",
+  "split": "diagnostic_dev",
+  "source_version": "complex_plan_diagnostic_dev_v1",
+  "created_at": "2026-08-03T22:03:14.216899+08:00",
+  "case_count": 8,
+  "case_ids": [
+    "complex_031",
+    "complex_032",
+    "complex_033",
+    "complex_034",
+    "complex_035",
+    "complex_036",
+    "complex_037",
+    "complex_038"
+  ],
+  "query_count": 24,
+  "calculation_count": 0,
+  "status_counts": {
+    "verified": 8
+  },
+  "type_difficulty_counts": {
+    "cross_company_comparison:hard": 2,
+    "single_company_multi_metric:hard": 2,
+    "single_company_multi_metric:medium": 4
+  },
+  "fact_reference_count": 24,
+  "unique_fact_reference_count": 23,
+  "evidence_reference_count": 24,
+  "diagnostic_target_count": 8,
+  "frozen_test_target_fact_overlap": 0,
+  "frozen_test_target_evidence_overlap": 0,
+  "diagnostic_targets": [
+    {
+      "case_id": "complex_031",
+      "query_id": "q1",
+      "diagnostic_category": "same_page_sibling",
+      "target_fact_id": "fact_midea_group_2024_non_current_assets",
+      "target_evidence_id": "evidence_midea_group_2024_non_current_assets",
+      "semantic_query": "美的集团 2024年12月31日 合并资产负债表 非流动资产合计"
+    },
+    {
+      "case_id": "complex_032",
+      "query_id": "q2",
+      "diagnostic_category": "same_page_sibling",
+      "target_fact_id": "fact_gree_electric_2024_cash_outflows_from_investing_activities_subtotal",
+      "target_evidence_id": "evidence_gree_electric_2024_cash_outflows_from_investing_activities_subtotal",
+      "semantic_query": "格力电器 2024年度 合并现金流量表 投资活动现金流出小计"
+    },
+    {
+      "case_id": "complex_033",
+      "query_id": "q2",
+      "diagnostic_category": "adjacent_page_continued_table",
+      "target_fact_id": "fact_haier_smart_home_2024_taxes_and_surcharges",
+      "target_evidence_id": "evidence_haier_smart_home_2024_taxes_and_surcharges",
+      "semantic_query": "海尔智家 2024年度 合并利润表 税金及附加"
+    },
+    {
+      "case_id": "complex_034",
+      "query_id": "q2",
+      "diagnostic_category": "adjacent_page_continued_table",
+      "target_fact_id": "fact_hisense_home_2024_tax_refunds_received",
+      "target_evidence_id": "evidence_hisense_home_2024_tax_refunds_received",
+      "semantic_query": "海信家电 2024年度 合并现金流量表 收到的税费返还"
+    },
+    {
+      "case_id": "complex_035",
+      "query_id": "q2",
+      "diagnostic_category": "confusable_labels",
+      "target_fact_id": "fact_gree_electric_2024_net_profit_attributable_to_parent",
+      "target_evidence_id": "evidence_gree_electric_2024_net_profit_attributable_to_parent",
+      "semantic_query": "格力电器 2024年度 合并利润表 归属于母公司股东的净利润"
+    },
+    {
+      "case_id": "complex_036",
+      "query_id": "q4",
+      "diagnostic_category": "confusable_labels_and_adjacent_page",
+      "target_fact_id": "fact_haier_smart_home_2024_total_comprehensive_income",
+      "target_evidence_id": "evidence_haier_smart_home_2024_total_comprehensive_income",
+      "semantic_query": "海尔智家 2024年度 合并利润表 综合收益总额"
+    },
+    {
+      "case_id": "complex_037",
+      "query_id": "q4",
+      "diagnostic_category": "page_window_coverage_gap",
+      "target_fact_id": "fact_haier_smart_home_2024_non_current_liabilities",
+      "target_evidence_id": "evidence_haier_smart_home_2024_non_current_liabilities",
+      "semantic_query": "海尔智家 2024年12月31日 合并资产负债表 非流动负债合计"
+    },
+    {
+      "case_id": "complex_038",
+      "query_id": "q2",
+      "diagnostic_category": "multi_fact_structural_retrieval",
+      "target_fact_id": "fact_midea_group_2024_net_cash_flow_from_financing_activities",
+      "target_evidence_id": "evidence_midea_group_2024_net_cash_flow_from_financing_activities",
+      "semantic_query": "美的集团 2024年度 合并现金流量表 筹资活动产生或使用的现金流量净额"
+    }
+  ],
+  "source_registry": {
+    "evidence_count": 78,
+    "financial_fact_count": 78,
+    "fact_evidence_link_count": 78,
+    "new_verified_source_count": 17
+  },
+  "frozen_inputs": {
+    "complex_plan_dev_v2_sha256": "a56300c499ca4deaffd071fb7caa44104effec81232a549ec68beedb607ed2ab",
+    "complex_plan_test_v1_sha256": "ea65ac71fd9cdee06db1c9eef0a733e061fd828869775a6b17f90231307c1049"
+  },
+  "dataset_sha256": "79554c2312b2ff45d54e204dad0a4317c596853df1a517736bfc5c71821148e0",
+  "manual_semantic_review_required": false,
+  "status": "verified",
+  "validated_by": "manual_review",
+  "validated_at": "2026-08-03T22:14:09.842361+08:00",
+  "updated_at": "2026-08-03T22:14:09.842361+08:00",
+  "verification": {
+    "case_count": 8,
+    "verified_case_count": 8,
+    "query_count": 24,
+    "fact_reference_count": 24,
+    "evidence_reference_count": 24,
+    "calculation_count": 0,
+    "semantic_fields_preserved": true,
+    "gold_plan_preserved": true,
+    "gold_answer_preserved": true,
+    "frozen_test_target_overlap": 0
+  }
+}

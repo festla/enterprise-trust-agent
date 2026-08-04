@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "evaluation_set_id": "hisense_retrieval_smoke_v1",
+  "strategy": "section_paragraph",
+  "chunk_dataset_id": "chunk_dataset_hisense_home_2024_af4c817c8d1ce908d1186fc0",
+  "vector_index_id": "vector_index_hisense_home_2024_d3e43f3fc0daab14de1f2e90",
+  "case_ids": [
+    "fact_006"
+  ],
+  "case_count": 1,
+  "hit_at_1_count": 0,
+  "hit_at_3_count": 0,
+  "hit_at_5_count": 0,
+  "recall_at_1": 0.0,
+  "recall_at_3": 0.0,
+  "recall_at_5": 0.0
+}

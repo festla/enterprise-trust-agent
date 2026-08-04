@@ -1,0 +1,28 @@
+{
+    "schema_version":  1,
+    "benchmark_id":  "retrieval_benchmark_v1",
+    "total_case_count":  48,
+    "report_count":  4,
+    "files":  [
+                  {
+                      "file_name":  "gree_electric_2024.jsonl",
+                      "case_count":  12,
+                      "sha256":  "9fcdf3fe45782c656cc618760d33caab9698c2a3149f791c0700947c267a020b"
+                  },
+                  {
+                      "file_name":  "haier_smart_home_2024.jsonl",
+                      "case_count":  12,
+                      "sha256":  "ee854cb254818072ee46e397adf0ea3ffd3ed1b19ce294a98bb48b23f02eccad"
+                  },
+                  {
+                      "file_name":  "hisense_home_2024.jsonl",
+                      "case_count":  12,
+                      "sha256":  "698493466a1d8f00750610e5da5f0b7aa6bdaf9ef5e9cc7811e1e1531fa41009"
+                  },
+                  {
+                      "file_name":  "midea_group_2024.jsonl",
+                      "case_count":  12,
+                      "sha256":  "d1828fb58b102bc5408842bed998924e21b3860acafe12a70b2528c570b96464"
+                  }
+              ]
+}

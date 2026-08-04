@@ -1,0 +1,25 @@
+{
+  "audited_case_count": 20,
+  "benchmark_id": "retrieval_benchmark_v1",
+  "final_audit_path": "data\\processed\\evaluations\\retrieval\\retrieval_benchmark_v1\\analysis\\failure_audit_reviewed_final.jsonl",
+  "important_constraints": {
+    "audit_is_separate_from_benchmark": true,
+    "gold_pdf_pages_modified": false,
+    "original_benchmark_modified": false
+  },
+  "pending_case_count": 0,
+  "root_cause_counts": {
+    "answer_precision_and_page_level_metric_mismatch": 1,
+    "minor_reranker_degradation_within_top5": 1,
+    "not_a_failure_method_disagreement": 1,
+    "not_a_failure_recovery_case": 3,
+    "page_level_gold_incomplete": 7,
+    "query_alias_and_reranker_wrong_reordering": 1,
+    "query_representation_and_section_localization": 1,
+    "reranker_wrong_reordering": 2,
+    "section_context_loss_and_policy_noise": 1,
+    "section_context_loss_and_scope_confusion": 1,
+    "source_priority_and_rrf_fusion_degradation": 1
+  },
+  "schema_version": 1
+}

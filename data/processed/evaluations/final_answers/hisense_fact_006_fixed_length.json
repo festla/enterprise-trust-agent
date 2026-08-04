@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "status": "refused",
+  "question": "海信家电2024年末合并口径的存货是多少？",
+  "metric_name": "存货",
+  "company_id": "hisense_home",
+  "report_id": "hisense_home_2024",
+  "fiscal_year": 2024,
+  "answer_text": "当前检索结果不足以可靠确认“存货”的数值，因此拒绝生成答案。",
+  "citation_ids": [],
+  "citations": [],
+  "used_chunk_ids": [],
+  "generator_id": null,
+  "refusal_reason": "Top-k 证据未在同一个 Chunk 中同时提供目标报表标题，以及与目标指标邻近且可归属的财务数值"
+}

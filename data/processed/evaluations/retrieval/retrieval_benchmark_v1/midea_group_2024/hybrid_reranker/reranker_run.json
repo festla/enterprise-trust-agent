@@ -1,0 +1,170 @@
+{
+  "bm25_index_id": "bm25_index_midea_group_2024_a5743867e264c317bc0076ac",
+  "case_timings": [
+    {
+      "case_id": "fact_001",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 29.558500042185187,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9399.82739998959,
+      "total_latency_ms": 9429.387900047004
+    },
+    {
+      "case_id": "fact_003",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 20.8213001023978,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9607.42300003767,
+      "total_latency_ms": 9628.248100169003
+    },
+    {
+      "case_id": "smoke_midea_2024_cash",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 17.90350000374019,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9590.561400167644,
+      "total_latency_ms": 9608.468200080097
+    },
+    {
+      "case_id": "smoke_midea_2024_mainland_external_revenue",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 23.273600032553077,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9772.943299962208,
+      "total_latency_ms": 9796.220900025219
+    },
+    {
+      "case_id": "smoke_midea_2024_ocf",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 25.13069985434413,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9610.237000044435,
+      "total_latency_ms": 9635.37159981206
+    },
+    {
+      "case_id": "smoke_midea_2024_operating_cost",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 18.33439990878105,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9917.141399811953,
+      "total_latency_ms": 9935.509599978104
+    },
+    {
+      "case_id": "smoke_midea_2024_parent_net_profit",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 22.18129998072982,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 8998.319099890068,
+      "total_latency_ms": 9020.504599902779
+    },
+    {
+      "case_id": "smoke_midea_2024_total_assets",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 20.83000005222857,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9135.609600227326,
+      "total_latency_ms": 9156.443999847397
+    },
+    {
+      "case_id": "midea_2024_short_term_borrowings",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 19.446699880063534,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9249.074100051075,
+      "total_latency_ms": 9268.524800194427
+    },
+    {
+      "case_id": "midea_2024_accounts_receivable",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 19.729600055143237,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9369.03619999066,
+      "total_latency_ms": 9388.76869995147
+    },
+    {
+      "case_id": "midea_2024_research_and_development_expenses",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 21.140000084415078,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9699.076700024307,
+      "total_latency_ms": 9720.219699898735
+    },
+    {
+      "case_id": "midea_2024_parent_company_revenue",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 20.885099889710546,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9346.063199918717,
+      "total_latency_ms": 9366.952699841931
+    }
+  ],
+  "chunk_dataset_id": "chunk_dataset_midea_group_2024_d27f3c7919cfba40f995b86a",
+  "dense_index_created": false,
+  "dense_index_id": "vector_index_midea_group_2024_866466bf6366ad4e6dc50dc9",
+  "embedding_spec": {
+    "dimension": 512,
+    "document_prefix": "",
+    "dtype": "float32",
+    "max_sequence_length": 512,
+    "model_name": "BAAI/bge-small-zh-v1.5",
+    "model_version": "534b6bfaaf500e70bcb9f3771cebc940c23b219d",
+    "normalize_embeddings": true,
+    "provider": "sentence_transformers",
+    "query_prefix": "为这个句子生成表示以用于检索相关文章：",
+    "schema_version": 1
+  },
+  "evaluation_set_id": "retrieval_benchmark_v1_midea_group_2024",
+  "hybrid_run_id": "hybrid_run_midea_group_2024_1ac01d0f38859b2ec3b097c6",
+  "latency_summary_ms": {
+    "hybrid_mean": 21.60289165719102,
+    "hybrid_p50": 20.83000005222857,
+    "hybrid_p95": 29.558500042185187,
+    "reranker_mean": 9474.609366676304,
+    "reranker_p50": 9399.82739998959,
+    "reranker_p95": 9917.141399811953,
+    "total_mean": 9496.21839997902,
+    "total_p50": 9429.387900047004,
+    "total_p95": 9935.509599978104
+  },
+  "report_id": "midea_group_2024",
+  "reranker_run_id": "reranker_run_midea_group_2024_46077d9417bbf3c7d625cf48",
+  "reranker_runtime_config": {
+    "batch_size": 4,
+    "device": "cpu",
+    "local_files_only": true,
+    "rerank_candidate_count": 50,
+    "return_count": 50
+  },
+  "reranker_spec": {
+    "architecture": "cross_encoder",
+    "input_template_version": "query_chunk_v1",
+    "max_length": 512,
+    "model_name": "BAAI/bge-reranker-base",
+    "model_revision": "2cfc18c9415c912f9d8155881c133215df768a70",
+    "provider": "sentence_transformers_cross_encoder",
+    "schema_version": 1,
+    "score_type": "cross_encoder_logit"
+  },
+  "retriever_type": "hybrid_reranker",
+  "rrf_config": {
+    "bm25_candidate_count": 50,
+    "dense_candidate_count": 50,
+    "fusion_method": "reciprocal_rank_fusion",
+    "fusion_version": "rrf_v1",
+    "rank_constant": 60,
+    "schema_version": 1
+  },
+  "schema_version": 1,
+  "tokenizer_spec": {
+    "ascii_token_rule": "contiguous_alnum",
+    "boundary_rule": "non_cjk_non_ascii_alnum",
+    "cjk_ngram_size": 2,
+    "cjk_token_rule": "character_ngram",
+    "lowercase_ascii": true,
+    "schema_version": 1,
+    "single_cjk_fallback": "keep_single_character",
+    "tokenizer_name": "deterministic_chinese_bigram",
+    "tokenizer_version": "deterministic_chinese_bigram_v1",
+    "unicode_normalization": "NFKC"
+  }
+}

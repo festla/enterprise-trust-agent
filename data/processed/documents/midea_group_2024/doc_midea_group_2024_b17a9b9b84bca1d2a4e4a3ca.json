@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "document_id": "doc_midea_group_2024_b17a9b9b84bca1d2a4e4a3ca",
+  "report_id": "midea_group_2024",
+  "source_path": "data/raw_reports/midea/2024/midea_2024_annual_report.pdf",
+  "source_filename": "midea_2024_annual_report.pdf",
+  "sha256": "b17a9b9b84bca1d2a4e4a3cadc5dd5ba5c85e3f1fd2d758acd3315b5b040ecd9",
+  "file_size_bytes": 6737887,
+  "pdf_page_count": 295,
+  "expected_pdf_page_count": 295,
+  "page_count_status": "matched",
+  "parser_name": "pymupdf",
+  "parser_version": "1.28.0",
+  "validation_status": "valid",
+  "created_at": "2026-07-25T13:10:24.802274Z"
+}

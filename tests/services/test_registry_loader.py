@@ -1,0 +1,1087 @@
+from pathlib import Path
+import pytest
+import yaml
+from decimal import Decimal
+
+from app.schemas.company import Company
+from app.schemas.report import PageMappingSegment, Report
+from app.schemas.metric import FinancialMetric, MetricAlias
+from app.services.registry_loader import (
+    RegistryLoaderError,
+    load_companies,
+    load_registry_yaml,
+    load_reports,
+    load_metrics,
+    load_registry_bundle,
+    load_evidences,
+    load_financial_facts,
+)
+from app.services.registry import (
+    DuplicateRegistryKeyError,
+    RegistryIntegrityError,
+)
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+COMPANIES_YAML_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "processed"
+    / "registries"
+    / "companies.yaml"
+)
+
+REPORTS_YAML_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "processed"
+    / "registries"
+    / "reports.yaml"
+)
+
+METRICS_YAML_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "processed"
+    / "registries"
+    / "metrics.yaml"
+)
+
+EVIDENCES_YAML_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "processed"
+    / "registries"
+    / "evidences.yaml"
+)
+
+FINANCIAL_FACTS_YAML_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "processed"
+    / "registries"
+    / "financial_facts.yaml"
+)
+
+
+def test_companies_yaml_can_be_parsed_as_company_models() -> None:
+    """companies.yaml 中的记录应能通过 Company Schema 校验。"""
+
+    raw_data = load_registry_yaml(COMPANIES_YAML_PATH)
+
+    assert raw_data["schema_version"] == 1
+
+    companies = [
+        Company.model_validate(item)
+        for item in raw_data["companies"]
+    ]
+
+    assert len(companies) == 6
+
+    company_ids = {company.company_id for company in companies}
+
+    assert company_ids == {
+        "midea_group",
+        "gree_electric",
+        "haier_smart_home",
+        "hisense_home",
+        "robam",
+        "supor",
+    }
+    assert all(len(company.stock_code) == 6 for company in companies)
+
+
+def test_reports_yaml_can_be_parsed_as_report_models() -> None:
+    """reports.yaml 中的报告和页码映射应通过 Schema 校验。"""
+
+    raw_data = load_registry_yaml(REPORTS_YAML_PATH)
+
+    assert raw_data["schema_version"] == 1
+
+    reports = [
+        Report.model_validate(item)
+        for item in raw_data["reports"]
+    ]
+
+    page_mappings = [
+        PageMappingSegment.model_validate(item)
+        for item in raw_data["page_mappings"]
+    ]
+
+    assert len(reports) == 12
+    assert reports[0].report_id == "midea_group_2024"
+    assert reports[0].company_id == "midea_group"
+    assert reports[0].fiscal_year == 2024
+    assert reports[0].expected_pdf_page_count == 295
+
+    assert len(page_mappings) == 14
+    assert page_mappings[0].report_id == reports[0].report_id
+    assert page_mappings[0].offset == 1
+    assert page_mappings[0].pdf_page_start == 2
+    assert page_mappings[0].printed_page_start == 1
+
+    report_ids = {
+        report.report_id
+        for report in reports
+    }
+
+    assert report_ids == {
+        "midea_group_2024",
+        "midea_group_2025",
+        "gree_electric_2024",
+        "gree_electric_2025",
+        "haier_smart_home_2024",
+        "haier_smart_home_2025",
+        "hisense_home_2024",
+        "hisense_home_2025",
+        "robam_2024",
+        "robam_2025",
+        "supor_2024",
+        "supor_2025",
+    }
+
+    mapping_report_ids = {
+        mapping.report_id
+        for mapping in page_mappings
+    }
+
+    assert mapping_report_ids == report_ids
+
+
+def test_metrics_yaml_can_be_parsed_as_metric_models() -> None:
+    """metrics.yaml 中的指标和别名应通过 Schema 校验。"""
+
+    raw_data = load_registry_yaml(METRICS_YAML_PATH)
+
+    assert raw_data["schema_version"] == 1
+
+    metrics = [
+        FinancialMetric.model_validate(item)
+        for item in raw_data["metrics"]
+    ]
+
+    aliases = [
+        MetricAlias.model_validate(item)
+        for item in raw_data["metric_aliases"]
+    ]
+
+    assert len(metrics) == 41
+    assert metrics[0].metric_id == "revenue"
+    assert metrics[0].display_name_cn == "营业收入"
+    assert metrics[0].default_unit.value == "CNY"
+    assert metrics[0].period_type.value == "duration"
+
+    assert len(aliases) == 52
+
+    alias_ids = {alias.alias_id for alias in aliases}
+
+    metric_ids = {
+        metric.metric_id
+        for metric in metrics
+    }
+
+    assert all(
+        alias.metric_id in metric_ids
+        for alias in aliases
+    )
+
+    assert metric_ids == {
+        "revenue",
+        "net_profit_attributable_to_parent",
+        "net_cash_flow_from_operating_activities",
+        "operating_cost",
+        "inventory",
+        "accounts_receivable",
+        "gross_profit_margin",
+        "total_assets",
+        "total_liabilities",
+        "selling_expenses",
+        "research_and_development_expenses",
+        "net_cash_flow_from_investing_activities",
+        "net_profit",
+        "selling_and_r_and_d_expense_ratio",
+        "operating_cash_flow_to_net_profit_ratio",
+        "short_term_borrowings",
+        "long_term_borrowings",
+        "bonds_payable",
+        "fixed_assets",
+        "intangible_assets",
+        "goodwill",
+        "operating_profit",
+        "total_profit",
+        "current_assets",
+        "current_liabilities",
+        "total_equity",
+        "net_cash_flow_from_financing_activities",
+        "income_tax_expense",
+        "monetary_funds",
+        "management_expenses",
+        "current_ratio",
+        "debt_to_equity_ratio",
+        "effective_income_tax_rate",
+        "non_current_assets",
+        "cash_outflows_from_investing_activities_subtotal",
+        "taxes_and_surcharges",
+        "cash_received_from_sales_of_goods_and_rendering_of_services",
+        "tax_refunds_received",
+        "other_comprehensive_income_net_of_tax",
+        "total_comprehensive_income",
+        "non_current_liabilities",
+    }
+
+    assert alias_ids == {
+        "revenue_operating_revenue_cn",
+        "revenue_revenue_short_cn",
+        "revenue_revenue_en",
+        "net_profit_parent_listed_shareholders_cn",
+        "net_profit_parent_short_cn",
+        "operating_cash_flow_net_cn",
+        "operating_cash_flow_short_cn",
+        "operating_cost_standard_cn",
+        "operating_cost_en",
+        "inventory_standard_cn",
+        "inventory_balance_cn",
+        "accounts_receivable_standard_cn",
+        "accounts_receivable_balance_cn",
+        "gross_profit_margin_standard_cn",
+        "gross_profit_margin_sales_cn",
+        "gross_profit_margin_en",
+        "total_assets_standard_cn",
+        "total_liabilities_standard_cn",
+        "selling_expenses_standard_cn",
+        "research_and_development_expenses_standard_cn",
+        "investing_cash_flow_net_standard_cn",
+        "net_profit_standard_cn",
+        "selling_and_r_and_d_expense_ratio_standard_cn",
+        "operating_cash_flow_to_net_profit_ratio_standard_cn",
+        "short_term_borrowings_standard_cn",
+        "long_term_borrowings_standard_cn",
+        "bonds_payable_standard_cn",
+        "fixed_assets_standard_cn",
+        "intangible_assets_standard_cn",
+        "goodwill_standard_cn",
+        "operating_profit_standard_cn",
+        "total_profit_standard_cn",
+        "current_assets_total_cn",
+        "current_liabilities_total_cn",
+        "total_equity_owner_total_cn",
+        "total_equity_shareholder_total_cn",
+        "total_equity_combined_total_cn",
+        "financing_cash_flow_net_standard_cn",
+        "income_tax_expense_standard_cn",
+        "monetary_funds_standard_cn",
+        "management_expenses_standard_cn",
+        "current_ratio_standard_cn",
+        "debt_to_equity_ratio_standard_cn",
+        "effective_income_tax_rate_standard_cn",
+        "non_current_assets_total_cn",
+        "investing_cash_outflows_subtotal_cn",
+        "taxes_and_surcharges_standard_cn",
+        "cash_received_from_sales_and_services_cn",
+        "tax_refunds_received_standard_cn",
+        "other_comprehensive_income_net_of_tax_cn",
+        "total_comprehensive_income_standard_cn",
+        "non_current_liabilities_total_cn",
+    }
+
+def test_reject_registry_yaml_with_non_mapping_root(
+    tmp_path: Path,
+) -> None:
+    """Registry YAML 顶层不是映射对象时应失败。"""
+
+    yaml_path = tmp_path / "invalid_registry.yaml"
+
+    yaml_path.write_text(
+        "- first_item\n- second_item\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RegistryLoaderError,
+        match="顶层必须是映射对象",
+    ):
+        load_registry_yaml(yaml_path)
+
+
+
+def test_load_companies_into_company_registry() -> None:
+    """companies.yaml 应被加载为可查询的 CompanyRegistry。"""
+
+    registry = load_companies(COMPANIES_YAML_PATH)
+
+    assert len(registry.values()) == 6
+    assert registry.contains("midea_group")
+    assert registry.contains("haier_smart_home")
+
+    midea = registry.require("midea_group")
+
+    assert midea.short_name_cn == "美的集团"
+    assert midea.stock_code == "000333"
+
+
+def test_load_reports_into_report_registry() -> None:
+    """reports.yaml 应被加载为可查询的 ReportRegistry。"""
+
+    registry, page_mappings = load_reports(
+        REPORTS_YAML_PATH
+    )
+
+    assert len(registry.values()) == 12
+    assert registry.contains("midea_group_2024")
+
+    report = registry.require("midea_group_2024")
+
+    assert report.company_id == "midea_group"
+    assert report.fiscal_year == 2024
+    assert report.quality_grade.value == "A"
+    assert report.expected_pdf_page_count == 295
+
+    assert len(page_mappings) == 14
+
+    mapping = page_mappings[0]
+
+    assert mapping.report_id == report.report_id
+    assert mapping.printed_page_start == 1
+    assert mapping.pdf_page_start == 2
+    assert mapping.offset == 1
+
+    assert registry.contains("midea_group_2025")
+
+    report_2025 = registry.require("midea_group_2025")
+
+    assert (
+        report_2025.publication_date.isoformat()
+        == "2026-03-31"
+    )
+
+    assert report_2025.company_id == "midea_group"
+    assert report_2025.fiscal_year == 2025
+    assert report_2025.quality_grade.value == "A"
+
+
+def test_load_metrics_into_metric_registry() -> None:
+    """metrics.yaml 应被加载为可查询的 MetricRegistry。"""
+
+    registry, aliases = load_metrics(
+        METRICS_YAML_PATH
+    )
+
+    assert len(registry.values()) == 41
+    assert registry.contains("revenue")
+
+    revenue = registry.require("revenue")
+
+    assert revenue.display_name_cn == "营业收入"
+    assert revenue.period_type.value == "duration"
+    assert revenue.default_unit.value == "CNY"
+    assert revenue.is_core_metric is True
+
+    assert len(aliases) == 52
+
+    registry_metric_ids = set(registry.keys())
+
+    assert registry_metric_ids == {
+        "revenue",
+        "net_profit_attributable_to_parent",
+        "net_cash_flow_from_operating_activities",
+        "operating_cost",
+        "inventory",
+        "accounts_receivable",
+        "gross_profit_margin",
+        "total_assets",
+        "total_liabilities",
+        "selling_expenses",
+        "research_and_development_expenses",
+        "net_cash_flow_from_investing_activities",
+        "net_profit",
+        "selling_and_r_and_d_expense_ratio",
+        "operating_cash_flow_to_net_profit_ratio",
+        "short_term_borrowings",
+        "long_term_borrowings",
+        "bonds_payable",
+        "fixed_assets",
+        "intangible_assets",
+        "goodwill",
+        "operating_profit",
+        "total_profit",
+        "current_assets",
+        "current_liabilities",
+        "total_equity",
+        "net_cash_flow_from_financing_activities",
+        "income_tax_expense",
+        "monetary_funds",
+        "management_expenses",
+        "current_ratio",
+        "debt_to_equity_ratio",
+        "effective_income_tax_rate",
+        "non_current_assets",
+        "cash_outflows_from_investing_activities_subtotal",
+        "taxes_and_surcharges",
+        "cash_received_from_sales_of_goods_and_rendering_of_services",
+        "tax_refunds_received",
+        "other_comprehensive_income_net_of_tax",
+        "total_comprehensive_income",
+        "non_current_liabilities",
+    }
+
+    assert all(
+        alias.metric_id in registry_metric_ids
+        for alias in aliases
+    )
+
+    alias_names = {alias.alias for alias in aliases}
+
+    assert alias_names == {
+        "营业收入",
+        "营收",
+        "revenue",
+        "归属于上市公司股东的净利润",
+        "归母净利润",
+        "经营活动产生的现金流量净额",
+        "经营现金流净额",
+        "营业成本",
+        "operating cost",
+        "存货",
+        "存货余额",
+        "应收账款",
+        "应收账款余额",
+        "毛利率",
+        "销售毛利率",
+        "gross profit margin",
+        "资产总计",
+        "负债合计",
+        "销售费用",
+        "研发费用",
+        "投资活动产生的现金流量净额",
+        "净利润",
+        "销售费用与研发费用合计占营业收入比例",
+        "经营活动现金流量净额与净利润比率",
+        "\u77ed\u671f\u501f\u6b3e",
+        "\u957f\u671f\u501f\u6b3e",
+        "\u5e94\u4ed8\u503a\u5238",
+        "\u56fa\u5b9a\u8d44\u4ea7",
+        "\u65e0\u5f62\u8d44\u4ea7",
+        "\u5546\u8a89",
+        "\u8425\u4e1a\u5229\u6da6",
+        "\u5229\u6da6\u603b\u989d",
+        "\u6d41\u52a8\u8d44\u4ea7\u5408\u8ba1",
+        "\u6d41\u52a8\u8d1f\u503a\u5408\u8ba1",
+        "\u6240\u6709\u8005\u6743\u76ca\u5408\u8ba1",
+        "\u80a1\u4e1c\u6743\u76ca\u5408\u8ba1",
+        "\u6240\u6709\u8005\u6743\u76ca\uff08\u6216\u80a1\u4e1c\u6743\u76ca\uff09\u5408\u8ba1",
+        "\u7b79\u8d44\u6d3b\u52a8\u4ea7\u751f\u7684\u73b0\u91d1\u6d41\u91cf\u51c0\u989d",
+        "\u6240\u5f97\u7a0e\u8d39\u7528",
+        "\u8d27\u5e01\u8d44\u91d1",
+        "\u7ba1\u7406\u8d39\u7528",
+        "\u6d41\u52a8\u6bd4\u7387",
+        "\u4ea7\u6743\u6bd4\u7387",
+        "\u6709\u6548\u6240\u5f97\u7a0e\u7387",
+        "\u975e\u6d41\u52a8\u8d44\u4ea7\u5408\u8ba1",
+        "\u6295\u8d44\u6d3b\u52a8\u73b0\u91d1\u6d41\u51fa\u5c0f\u8ba1",
+        "\u7a0e\u91d1\u53ca\u9644\u52a0",
+        "\u9500\u552e\u5546\u54c1\u3001\u63d0\u4f9b\u52b3\u52a1\u6536\u5230\u7684\u73b0\u91d1",
+        "\u6536\u5230\u7684\u7a0e\u8d39\u8fd4\u8fd8",
+        "\u5176\u4ed6\u7efc\u5408\u6536\u76ca\u7684\u7a0e\u540e\u51c0\u989d",
+        "\u7efc\u5408\u6536\u76ca\u603b\u989d",
+        "\u975e\u6d41\u52a8\u8d1f\u503a\u5408\u8ba1",
+    }
+
+    net_profit = registry.require(
+        "net_profit_attributable_to_parent"
+    )
+
+    operating_cash_flow = registry.require(
+        "net_cash_flow_from_operating_activities"
+    )
+
+    assert net_profit.period_type.value == "duration"
+    assert net_profit.default_unit.value == "CNY"
+    assert len(net_profit.allowed_scopes) == 1
+
+    assert operating_cash_flow.statement_type.value == (
+        "cash_flow_statement"
+    )
+    assert operating_cash_flow.default_unit.value == "CNY"
+
+    operating_cost = registry.require(
+        "operating_cost"
+    )
+
+    inventory = registry.require(
+        "inventory"
+    )
+
+    accounts_receivable = registry.require(
+        "accounts_receivable"
+    )
+
+    assert operating_cost.statement_type.value == (
+        "income_statement"
+    )
+    assert operating_cost.period_type.value == "duration"
+
+    assert inventory.statement_type.value == "balance_sheet"
+    assert inventory.period_type.value == "instant"
+
+    assert accounts_receivable.statement_type.value == (
+        "balance_sheet"
+    )
+    assert accounts_receivable.period_type.value == "instant"
+
+    gross_profit_margin = registry.require(
+        "gross_profit_margin"
+    )
+
+    assert gross_profit_margin.metric_origin.value == "derived"
+    assert gross_profit_margin.formula_id == (
+        "gross_profit_margin_formula"
+    )
+    assert gross_profit_margin.period_type.value == "duration"
+    assert gross_profit_margin.default_unit.value == "percent"
+    assert gross_profit_margin.statement_type.value == (
+        "income_statement"
+    )
+
+def test_load_complex_dev_metric_dependencies() -> None:
+    """复杂问题第一批dev依赖的指标应完整可用。"""
+
+    registry, aliases = load_metrics(
+        METRICS_YAML_PATH
+    )
+
+    required_metric_ids = {
+        "total_assets",
+        "total_liabilities",
+        "selling_expenses",
+        "research_and_development_expenses",
+        "net_cash_flow_from_investing_activities",
+        "net_profit",
+        "selling_and_r_and_d_expense_ratio",
+        "operating_cash_flow_to_net_profit_ratio",
+    }
+
+    assert required_metric_ids.issubset(
+        set(registry.keys())
+    )
+
+    assert len(registry) == 41
+    assert len(aliases) == 52
+
+    total_assets = registry.require(
+        "total_assets"
+    )
+
+    total_liabilities = registry.require(
+        "total_liabilities"
+    )
+
+    selling_expenses = registry.require(
+        "selling_expenses"
+    )
+
+    research_and_development_expenses = (
+        registry.require(
+            "research_and_development_expenses"
+        )
+    )
+
+    investing_cash_flow = registry.require(
+        "net_cash_flow_from_investing_activities"
+    )
+
+    net_profit = registry.require(
+        "net_profit"
+    )
+
+    parent_net_profit = registry.require(
+        "net_profit_attributable_to_parent"
+    )
+
+    expense_ratio = registry.require(
+        "selling_and_r_and_d_expense_ratio"
+    )
+
+    cash_profit_ratio = registry.require(
+        "operating_cash_flow_to_net_profit_ratio"
+    )
+
+    assert total_assets.statement_type.value == (
+        "balance_sheet"
+    )
+    assert total_assets.period_type.value == "instant"
+    assert total_assets.default_unit.value == "CNY"
+
+    assert total_liabilities.statement_type.value == (
+        "balance_sheet"
+    )
+    assert (
+        total_liabilities.period_type.value
+        == "instant"
+    )
+
+    assert selling_expenses.statement_type.value == (
+        "income_statement"
+    )
+    assert (
+        selling_expenses.period_type.value
+        == "duration"
+    )
+
+    assert (
+        research_and_development_expenses
+        .statement_type.value
+        == "income_statement"
+    )
+
+    assert investing_cash_flow.statement_type.value == (
+        "cash_flow_statement"
+    )
+    assert (
+        investing_cash_flow.period_type.value
+        == "duration"
+    )
+
+    assert net_profit.confusable_metric_ids == [
+        "net_profit_attributable_to_parent"
+    ]
+
+    assert parent_net_profit.confusable_metric_ids == [
+        "net_profit"
+    ]
+
+    assert expense_ratio.metric_origin.value == (
+        "derived"
+    )
+    assert expense_ratio.default_unit.value == (
+        "percent"
+    )
+    assert expense_ratio.formula_id == (
+        "selling_and_r_and_d_expense_ratio_formula"
+    )
+
+    assert cash_profit_ratio.metric_origin.value == (
+        "derived"
+    )
+    assert cash_profit_ratio.default_unit.value == (
+        "ratio"
+    )
+    assert cash_profit_ratio.formula_id == (
+        "operating_cash_flow_to_net_profit_ratio_formula"
+    )
+
+
+def test_load_evidences_into_evidence_registry() -> None:
+    """evidences.yaml 应加载为 EvidenceRegistry。"""
+
+    registry = load_evidences(
+        EVIDENCES_YAML_PATH
+    )
+
+    assert len(registry.values()) == 78
+
+    evidence = registry.require(
+        "evidence_midea_group_2024_revenue"
+    )
+
+    assert evidence.report_id == "midea_group_2024"
+    assert evidence.document_id == (
+        "midea_group_2024_v1"
+    )
+    assert evidence.page_id == (
+        "midea_group_2024_pdf_158"
+    )
+
+    assert evidence.printed_page == 157
+    assert evidence.pdf_page == 158
+
+    assert evidence.table_name == "合并利润表"
+    assert evidence.row_label == "营业收入"
+    assert evidence.column_label == "2024年度"
+    assert evidence.cell_value == "407,149,600"
+
+    assert (
+        evidence.validation_status.value
+        == "verified"
+    )
+
+
+def test_load_financial_facts_into_registry() -> None:
+    """financial_facts.yaml 应加载事实及证据关联。"""
+
+    registry, links = load_financial_facts(
+        FINANCIAL_FACTS_YAML_PATH
+    )
+
+    assert len(registry.values()) == 78
+
+    fact = registry.require(
+        "fact_midea_group_2024_revenue"
+    )
+
+    assert fact.company_id == "midea_group"
+    assert fact.report_id == "midea_group_2024"
+    assert fact.metric_id == "revenue"
+    assert fact.fiscal_year == 2024
+
+    assert fact.raw_value == Decimal(
+        "407149600"
+    )
+    assert fact.unit_multiplier == Decimal(
+        "1000"
+    )
+    assert fact.normalized_value == Decimal(
+        "407149600000"
+    )
+
+    assert fact.raw_unit.value == "CNY_thousand"
+    assert fact.normalized_unit.value == "CNY"
+    assert fact.currency == "CNY"
+
+    assert fact.primary_evidence_id == (
+        "evidence_midea_group_2024_revenue"
+    )
+
+    assert len(links) == 78
+
+    link = links[0]
+
+    assert link.fact_id == fact.fact_id
+    assert (
+        link.evidence_id
+        == fact.primary_evidence_id
+    )
+    assert link.support_type.value == "primary"
+
+
+def test_load_complete_registry_bundle() -> None:
+    """三份 YAML 应能组成关系完整的 RegistryBundle。"""
+
+    (
+        bundle,
+        page_mappings,
+        metric_aliases,
+        fact_evidence_links,
+    ) = load_registry_bundle(
+        companies_path=COMPANIES_YAML_PATH,
+        reports_path=REPORTS_YAML_PATH,
+        metrics_path=METRICS_YAML_PATH,
+        evidences_path=EVIDENCES_YAML_PATH,
+        financial_facts_path=(
+            FINANCIAL_FACTS_YAML_PATH
+        ),
+    )
+
+    assert len(bundle.companies) == 6
+    assert len(bundle.reports) == 12
+    assert len(bundle.metrics) == 41
+
+    assert len(bundle.evidences) == 78
+    assert len(bundle.financial_facts) == 78
+    assert len(fact_evidence_links) == 78
+
+    report = bundle.reports.require(
+        "midea_group_2024"
+    )
+
+    assert bundle.companies.contains(
+        report.company_id
+    )
+
+    assert len(page_mappings) == 14
+    assert len(metric_aliases) == 52
+
+    bundle.validate_relationships()
+
+    fact = bundle.financial_facts.require(
+        "fact_midea_group_2024_revenue"
+    )
+
+    evidence = bundle.evidences.require(
+        "evidence_midea_group_2024_revenue"
+    )
+
+    metric = bundle.metrics.require(
+        fact.metric_id
+    )
+
+    report = bundle.reports.require(
+        fact.report_id
+    )
+
+    company = bundle.companies.require(
+        fact.company_id
+    )
+
+    link = fact_evidence_links[0]
+
+    assert company.company_id == "midea_group"
+
+    assert report.company_id == company.company_id
+    assert report.fiscal_year == fact.fiscal_year
+
+    assert metric.metric_id == "revenue"
+    assert fact.metric_id == metric.metric_id
+
+    assert (
+        fact.primary_evidence_id
+        == evidence.evidence_id
+    )
+
+    assert evidence.report_id == report.report_id
+
+    assert link.fact_id == fact.fact_id
+    assert link.evidence_id == evidence.evidence_id
+    assert link.support_type.value == "primary"
+
+    bundle.validate_relationships()
+
+
+
+def test_reject_bundle_when_report_references_missing_company(
+    tmp_path: Path,
+) -> None:
+    """Report 引用不存在的 Company 时，Bundle 加载应失败。"""
+
+    raw_data = load_registry_yaml(REPORTS_YAML_PATH)
+
+    raw_report = raw_data["reports"][0]
+    raw_mapping = raw_data["page_mappings"][0]
+
+    raw_report["company_id"] = "missing_company"
+    raw_report["report_id"] = "missing_company_2024"
+
+    raw_mapping["report_id"] = "missing_company_2024"
+
+    invalid_reports_path = (
+        tmp_path / "invalid_reports.yaml"
+    )
+
+    invalid_reports_path.write_text(
+        yaml.safe_dump(
+            raw_data,
+            allow_unicode=True,
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RegistryIntegrityError,
+        match="不存在的 Company",
+    ):
+        load_registry_bundle(
+            companies_path=COMPANIES_YAML_PATH,
+            reports_path=invalid_reports_path,
+            metrics_path=METRICS_YAML_PATH,
+        )
+
+
+def test_reject_bundle_when_alias_references_missing_metric(
+    tmp_path: Path,
+) -> None:
+    """MetricAlias 引用不存在的指标时应拒绝加载。"""
+
+    raw_data = load_registry_yaml(METRICS_YAML_PATH)
+
+    raw_data["metric_aliases"][0]["metric_id"] = (
+        "missing_metric"
+    )
+
+    invalid_metrics_path = (
+        tmp_path / "invalid_metrics.yaml"
+    )
+
+    invalid_metrics_path.write_text(
+        yaml.safe_dump(
+            raw_data,
+            allow_unicode=True,
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RegistryIntegrityError,
+        match="不存在的 FinancialMetric",
+    ):
+        load_registry_bundle(
+            companies_path=COMPANIES_YAML_PATH,
+            reports_path=REPORTS_YAML_PATH,
+            metrics_path=invalid_metrics_path,
+        )
+
+
+def test_reject_bundle_when_page_mapping_references_missing_report(
+    tmp_path: Path,
+) -> None:
+    """页码映射引用不存在的报告时应拒绝加载。"""
+
+    raw_data = load_registry_yaml(REPORTS_YAML_PATH)
+
+    raw_data["page_mappings"][0]["report_id"] = (
+        "missing_report_2024"
+    )
+
+    invalid_reports_path = (
+        tmp_path / "invalid_page_mapping_reports.yaml"
+    )
+
+    invalid_reports_path.write_text(
+        yaml.safe_dump(
+            raw_data,
+            allow_unicode=True,
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RegistryIntegrityError,
+        match="不存在的 Report",
+    ):
+        load_registry_bundle(
+            companies_path=COMPANIES_YAML_PATH,
+            reports_path=invalid_reports_path,
+            metrics_path=METRICS_YAML_PATH,
+        )
+
+
+def test_reject_unsupported_registry_schema_version(
+    tmp_path: Path,
+) -> None:
+    """Registry YAML 使用不支持的版本时应失败。"""
+
+    yaml_path = tmp_path / "unsupported_version.yaml"
+
+    yaml_path.write_text(
+        (
+            "schema_version: 999\n"
+            "companies: []\n"
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RegistryLoaderError,
+        match="不支持的 Registry YAML schema_version",
+    ):
+        load_registry_yaml(yaml_path)
+
+
+def test_reject_missing_registry_yaml_file(
+    tmp_path: Path,
+) -> None:
+    """Registry YAML 文件不存在时应抛出明确异常。"""
+
+    missing_path = tmp_path / "missing_registry.yaml"
+
+    with pytest.raises(
+        RegistryLoaderError,
+        match="Registry YAML 文件不存在",
+    ):
+        load_registry_yaml(missing_path)
+
+
+def test_reject_companies_yaml_without_companies_field(
+    tmp_path: Path,
+) -> None:
+    """companies.yaml 缺少 companies 字段时应失败。"""
+
+    yaml_path = tmp_path / "missing_companies_field.yaml"
+
+    yaml_path.write_text(
+        (
+            "schema_version: 1\n"
+            "other_data: []\n"
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RegistryLoaderError,
+        match="companies 字段必须是列表",
+    ):
+        load_companies(yaml_path)
+
+
+def test_reject_companies_yaml_with_non_list_companies(
+    tmp_path: Path,
+) -> None:
+    """companies 字段不是列表时应失败。"""
+
+    yaml_path = tmp_path / "invalid_companies_type.yaml"
+
+    yaml_path.write_text(
+        (
+            "schema_version: 1\n"
+            "companies:\n"
+            "  company_id: midea_group\n"
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RegistryLoaderError,
+        match="companies 字段必须是列表",
+    ):
+        load_companies(yaml_path)
+
+
+def test_reject_companies_yaml_with_empty_companies(
+    tmp_path: Path,
+) -> None:
+    """companies 字段为空列表时应失败。"""
+
+    yaml_path = tmp_path / "empty_companies.yaml"
+
+    yaml_path.write_text(
+        (
+            "schema_version: 1\n"
+            "companies: []\n"
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RegistryLoaderError,
+        match="companies 字段不能为空",
+    ):
+        load_companies(yaml_path)
+
+
+def test_reject_duplicate_company_registry_key(
+    tmp_path: Path,
+) -> None:
+    """companies.yaml 出现重复 company_id 时应拒绝加载。"""
+
+    raw_data = load_registry_yaml(
+        COMPANIES_YAML_PATH
+    )
+
+    duplicate_company = dict(
+        raw_data["companies"][0]
+    )
+
+    raw_data["companies"].append(
+        duplicate_company
+    )
+
+    invalid_companies_path = (
+        tmp_path / "duplicate_companies.yaml"
+    )
+
+    invalid_companies_path.write_text(
+        yaml.safe_dump(
+            raw_data,
+            allow_unicode=True,
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        DuplicateRegistryKeyError,
+        match="company_id 已存在",
+    ):
+        load_companies(invalid_companies_path)

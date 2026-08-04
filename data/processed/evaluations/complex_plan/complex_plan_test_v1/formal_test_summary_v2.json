@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "experiment_id": "complex_plan_test_v2_frozen_top5_metric_aware_context_v2",
+  "split": "test",
+  "formal_test": true,
+  "post_test_retuning_allowed": false,
+  "case_dataset": "data/evaluation/complex_plan/complex_plan_test_v1.jsonl",
+  "case_dataset_sha256": "ea65ac71fd9cdee06db1c9eef0a733e061fd828869775a6b17f90231307c1049",
+  "calculation_dataset": "data/evaluation/complex_plan/gold_calculations_test_v1.jsonl",
+  "calculation_dataset_sha256": "36217aa94b2da6792d41ac09db24999c12427d3913c59262c9cdb6500811228d",
+  "test_manifest_sha256": "5ea0ea7777c583acb55a2aca0c7c25bda96411e0bd3d5db99dcd9f18258004c0",
+  "frozen_config": "data/processed/evaluations/complex_plan/complex_plan_dev_v2/context_budget_frozen_config_v2.json",
+  "frozen_config_sha256": "edd88a2fb38d60699e56b0a996fdd82dbda99da1c0a128da5fc59f73ed1d8043",
+  "frozen_parameter_sha256": "d9f2c439b4fe9a13c9ed5763ec62c7ec1f8f27306c029d713efa07920e669e99",
+  "frozen_parameters": {
+    "base_retrieval": {
+      "base_top_k": 5,
+      "bm25_candidate_count": 50,
+      "dense_candidate_count": 50,
+      "embedding_model_name": "BAAI/bge-small-zh-v1.5",
+      "embedding_model_revision": "534b6bfaaf500e70bcb9f3771cebc940c23b219d",
+      "rank_constant": 60,
+      "rerank_candidate_count": 50,
+      "reranker_model_name": "BAAI/bge-reranker-base",
+      "reranker_model_revision": "2cfc18c9415c912f9d8155881c133215df768a70",
+      "retriever_type": "hybrid_rrf_reranker"
+    },
+    "context_candidate_generation": {
+      "page_window": 1,
+      "strategy_id": "same_and_adjacent_page_context_v2"
+    },
+    "context_selection": {
+      "expand_only_when_base_unresolved": true,
+      "lexical_score_version": "metric_name_query_bigram_v1",
+      "max_expanded_chars": 1600,
+      "max_expanded_items": 2,
+      "policy_id": "gated_metric_aware_context_budget_v2"
+    },
+    "fact_resolution": {
+      "requires_verified_evidence": true,
+      "requires_verified_fact": true,
+      "resolver_version": "registry_context_fact_resolver_v1"
+    }
+  },
+  "run_started_at": "2026-08-04T02:31:36.898447+00:00",
+  "run_completed_at": "2026-08-04T02:42:43.635784+00:00",
+  "case_count": 10,
+  "completed_count": 7,
+  "failed_count": 3,
+  "refused_count": 0,
+  "all_completed": false,
+  "completion_rate": 0.7,
+  "planned_query_count": 34,
+  "executed_query_count": 31,
+  "resolved_query_count": 28,
+  "query_resolution_rate": 0.8235294117647058,
+  "calculation_trace_count": 5,
+  "completed_calculation_count": 5,
+  "answer_exact_match_count": 1,
+  "fact_reference_exact_match_count": 7,
+  "evidence_reference_exact_match_count": 7,
+  "calculation_reference_exact_match_count": 7,
+  "base_resolved_query_count": 17,
+  "expansion_required_query_count": 14,
+  "expansion_recovered_query_count": 11,
+  "selected_expanded_item_count": 28,
+  "selected_expanded_char_count": 19598,
+  "retriever_ids": [
+    "complex_hybrid_reranker_bge_fixed_v1_same_and_adjacent_page_context_v2_gated_metric_aware_context_budget_v2_registry_context_fact_resolver_v1"
+  ],
+  "generator_ids": [
+    "deterministic_financial_answer_generator_v2"
+  ],
+  "calculator_ids": [
+    "deterministic_calculator_v1"
+  ],
+  "top_k_values": [
+    5
+  ],
+  "failure_records": [
+    {
+      "case_id": "complex_022",
+      "status": "failed",
+      "error_stage": "retrieval",
+      "error_message": "q2 没有解析出 FinancialFact",
+      "unresolved_query_ids": [
+        "q2"
+      ]
+    },
+    {
+      "case_id": "complex_023",
+      "status": "failed",
+      "error_stage": "retrieval",
+      "error_message": "q2 没有解析出 FinancialFact",
+      "unresolved_query_ids": [
+        "q2"
+      ]
+    },
+    {
+      "case_id": "complex_024",
+      "status": "failed",
+      "error_stage": "retrieval",
+      "error_message": "q3 没有解析出 FinancialFact",
+      "unresolved_query_ids": [
+        "q3"
+      ]
+    }
+  ],
+  "result_path": "data/processed/evaluations/complex_plan/complex_plan_test_v1/formal_test_top5_metric_aware_context_v2.jsonl",
+  "result_sha256": "ddef6fb151039ae6a0a09de3f93e4c1cb09e85adf83ad7cd30778c2866cfa63e",
+  "audit_path": "data/processed/evaluations/complex_plan/complex_plan_test_v1/formal_test_context_audit_v2.jsonl",
+  "audit_sha256": "483fa8554e5c50633f40f4e2b1a82644e2ffaa1c87490750689c4adaf7ee70f9"
+}

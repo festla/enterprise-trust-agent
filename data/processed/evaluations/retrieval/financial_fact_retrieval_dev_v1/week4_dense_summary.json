@@ -1,0 +1,400 @@
+{
+  "schema_version": 1,
+  "experiment_count": 6,
+  "report_results": [
+    {
+      "report_id": "midea_group_2024",
+      "strategy": "fixed_length",
+      "case_count": 8,
+      "hit_at_1_count": 4,
+      "hit_at_3_count": 6,
+      "hit_at_5_count": 7,
+      "recall_at_1": 0.5,
+      "recall_at_3": 0.75,
+      "recall_at_5": 0.875
+    },
+    {
+      "report_id": "midea_group_2024",
+      "strategy": "paragraph",
+      "case_count": 8,
+      "hit_at_1_count": 4,
+      "hit_at_3_count": 5,
+      "hit_at_5_count": 6,
+      "recall_at_1": 0.5,
+      "recall_at_3": 0.625,
+      "recall_at_5": 0.75
+    },
+    {
+      "report_id": "midea_group_2024",
+      "strategy": "section_paragraph",
+      "case_count": 8,
+      "hit_at_1_count": 6,
+      "hit_at_3_count": 6,
+      "hit_at_5_count": 6,
+      "recall_at_1": 0.75,
+      "recall_at_3": 0.75,
+      "recall_at_5": 0.75
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "fixed_length",
+      "case_count": 8,
+      "hit_at_1_count": 0,
+      "hit_at_3_count": 3,
+      "hit_at_5_count": 3,
+      "recall_at_1": 0.0,
+      "recall_at_3": 0.375,
+      "recall_at_5": 0.375
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "paragraph",
+      "case_count": 8,
+      "hit_at_1_count": 0,
+      "hit_at_3_count": 3,
+      "hit_at_5_count": 3,
+      "recall_at_1": 0.0,
+      "recall_at_3": 0.375,
+      "recall_at_5": 0.375
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "section_paragraph",
+      "case_count": 8,
+      "hit_at_1_count": 1,
+      "hit_at_3_count": 2,
+      "hit_at_5_count": 2,
+      "recall_at_1": 0.125,
+      "recall_at_3": 0.25,
+      "recall_at_5": 0.25
+    }
+  ],
+  "overall_by_strategy": [
+    {
+      "strategy": "fixed_length",
+      "case_count": 16,
+      "hit_at_1_count": 4,
+      "hit_at_3_count": 9,
+      "hit_at_5_count": 10,
+      "recall_at_1": 0.25,
+      "recall_at_3": 0.5625,
+      "recall_at_5": 0.625
+    },
+    {
+      "strategy": "paragraph",
+      "case_count": 16,
+      "hit_at_1_count": 4,
+      "hit_at_3_count": 8,
+      "hit_at_5_count": 9,
+      "recall_at_1": 0.25,
+      "recall_at_3": 0.5,
+      "recall_at_5": 0.5625
+    },
+    {
+      "strategy": "section_paragraph",
+      "case_count": 16,
+      "hit_at_1_count": 7,
+      "hit_at_3_count": 8,
+      "hit_at_5_count": 8,
+      "recall_at_1": 0.4375,
+      "recall_at_3": 0.5,
+      "recall_at_5": 0.5
+    }
+  ],
+  "top5_failures": [
+    {
+      "report_id": "midea_group_2024",
+      "strategy": "fixed_length",
+      "case_id": "smoke_midea_2024_mainland_external_revenue",
+      "metric_name": null,
+      "first_relevant_rank": 9,
+      "top_pdf_pages": [
+        258,
+        260,
+        254,
+        247,
+        261
+      ]
+    },
+    {
+      "report_id": "midea_group_2024",
+      "strategy": "paragraph",
+      "case_id": "smoke_midea_2024_mainland_external_revenue",
+      "metric_name": null,
+      "first_relevant_rank": 13,
+      "top_pdf_pages": [
+        258,
+        260,
+        266,
+        265,
+        249
+      ]
+    },
+    {
+      "report_id": "midea_group_2024",
+      "strategy": "paragraph",
+      "case_id": "smoke_midea_2024_total_assets",
+      "metric_name": null,
+      "first_relevant_rank": 6,
+      "top_pdf_pages": [
+        233,
+        157,
+        54,
+        255,
+        214
+      ]
+    },
+    {
+      "report_id": "midea_group_2024",
+      "strategy": "section_paragraph",
+      "case_id": "smoke_midea_2024_cash",
+      "metric_name": null,
+      "first_relevant_rank": 7,
+      "top_pdf_pages": [
+        158,
+        160,
+        159,
+        234,
+        214
+      ]
+    },
+    {
+      "report_id": "midea_group_2024",
+      "strategy": "section_paragraph",
+      "case_id": "smoke_midea_2024_total_assets",
+      "metric_name": null,
+      "first_relevant_rank": 9,
+      "top_pdf_pages": [
+        158,
+        159,
+        214,
+        160,
+        166
+      ]
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "fixed_length",
+      "case_id": "fact_006",
+      "metric_name": null,
+      "first_relevant_rank": 24,
+      "top_pdf_pages": [
+        138,
+        11,
+        185,
+        129,
+        184
+      ]
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "fixed_length",
+      "case_id": "smoke_hisense_2024_accounts_receivable",
+      "metric_name": null,
+      "first_relevant_rank": 22,
+      "top_pdf_pages": [
+        161,
+        129,
+        163,
+        138,
+        237
+      ]
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "fixed_length",
+      "case_id": "smoke_hisense_2024_ocf",
+      "metric_name": null,
+      "first_relevant_rank": 6,
+      "top_pdf_pages": [
+        10,
+        194,
+        130,
+        121,
+        121
+      ]
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "fixed_length",
+      "case_id": "smoke_hisense_2024_parent_net_profit",
+      "metric_name": null,
+      "first_relevant_rank": 13,
+      "top_pdf_pages": [
+        129,
+        123,
+        129,
+        243,
+        118
+      ]
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "fixed_length",
+      "case_id": "smoke_hisense_2024_total_assets",
+      "metric_name": null,
+      "first_relevant_rank": 61,
+      "top_pdf_pages": [
+        11,
+        129,
+        185,
+        138,
+        162
+      ]
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "paragraph",
+      "case_id": "fact_006",
+      "metric_name": null,
+      "first_relevant_rank": 24,
+      "top_pdf_pages": [
+        138,
+        11,
+        185,
+        129,
+        184
+      ]
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "paragraph",
+      "case_id": "smoke_hisense_2024_accounts_receivable",
+      "metric_name": null,
+      "first_relevant_rank": 22,
+      "top_pdf_pages": [
+        161,
+        129,
+        163,
+        138,
+        237
+      ]
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "paragraph",
+      "case_id": "smoke_hisense_2024_ocf",
+      "metric_name": null,
+      "first_relevant_rank": 6,
+      "top_pdf_pages": [
+        10,
+        194,
+        130,
+        121,
+        121
+      ]
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "paragraph",
+      "case_id": "smoke_hisense_2024_parent_net_profit",
+      "metric_name": null,
+      "first_relevant_rank": 13,
+      "top_pdf_pages": [
+        129,
+        123,
+        129,
+        243,
+        118
+      ]
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "paragraph",
+      "case_id": "smoke_hisense_2024_total_assets",
+      "metric_name": null,
+      "first_relevant_rank": 61,
+      "top_pdf_pages": [
+        11,
+        129,
+        185,
+        138,
+        162
+      ]
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "section_paragraph",
+      "case_id": "fact_006",
+      "metric_name": null,
+      "first_relevant_rank": 23,
+      "top_pdf_pages": [
+        164,
+        119,
+        183,
+        159,
+        129
+      ]
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "section_paragraph",
+      "case_id": "smoke_hisense_2024_accounts_receivable",
+      "metric_name": null,
+      "first_relevant_rank": 19,
+      "top_pdf_pages": [
+        164,
+        161,
+        159,
+        183,
+        129
+      ]
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "section_paragraph",
+      "case_id": "smoke_hisense_2024_ocf",
+      "metric_name": null,
+      "first_relevant_rank": 7,
+      "top_pdf_pages": [
+        119,
+        119,
+        121,
+        205,
+        196
+      ]
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "section_paragraph",
+      "case_id": "smoke_hisense_2024_operating_cost",
+      "metric_name": null,
+      "first_relevant_rank": 20,
+      "top_pdf_pages": [
+        27,
+        207,
+        119,
+        123,
+        117
+      ]
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "section_paragraph",
+      "case_id": "smoke_hisense_2024_revenue",
+      "metric_name": null,
+      "first_relevant_rank": 46,
+      "top_pdf_pages": [
+        117,
+        119,
+        117,
+        26,
+        123
+      ]
+    },
+    {
+      "report_id": "hisense_home_2024",
+      "strategy": "section_paragraph",
+      "case_id": "smoke_hisense_2024_total_assets",
+      "metric_name": null,
+      "first_relevant_rank": 114,
+      "top_pdf_pages": [
+        129,
+        164,
+        183,
+        162,
+        230
+      ]
+    }
+  ]
+}

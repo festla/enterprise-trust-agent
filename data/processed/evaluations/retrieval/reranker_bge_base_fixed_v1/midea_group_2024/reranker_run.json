@@ -1,0 +1,138 @@
+{
+  "bm25_index_id": "bm25_index_midea_group_2024_a5743867e264c317bc0076ac",
+  "case_timings": [
+    {
+      "case_id": "fact_001",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 40.07590003311634,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 10355.945399962366,
+      "total_latency_ms": 10396.024100016803
+    },
+    {
+      "case_id": "fact_003",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 24.942100048065186,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 10004.579900065437,
+      "total_latency_ms": 10029.52539990656
+    },
+    {
+      "case_id": "smoke_midea_2024_cash",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 18.234499963000417,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9845.761299831793,
+      "total_latency_ms": 9863.999499939382
+    },
+    {
+      "case_id": "smoke_midea_2024_mainland_external_revenue",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 25.069299852475524,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 10080.563700059429,
+      "total_latency_ms": 10105.636900058016
+    },
+    {
+      "case_id": "smoke_midea_2024_ocf",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 22.168499883264303,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 10341.706200037152,
+      "total_latency_ms": 10363.877900177613
+    },
+    {
+      "case_id": "smoke_midea_2024_operating_cost",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 27.666399953886867,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 10372.962899971753,
+      "total_latency_ms": 10400.632599834353
+    },
+    {
+      "case_id": "smoke_midea_2024_parent_net_profit",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 23.314899997785687,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9326.785699930042,
+      "total_latency_ms": 9350.103799952194
+    },
+    {
+      "case_id": "smoke_midea_2024_total_assets",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 23.23880000039935,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9566.841599997133,
+      "total_latency_ms": 9590.08470014669
+    }
+  ],
+  "chunk_dataset_id": "chunk_dataset_midea_group_2024_d27f3c7919cfba40f995b86a",
+  "dense_index_created": false,
+  "dense_index_id": "vector_index_midea_group_2024_866466bf6366ad4e6dc50dc9",
+  "embedding_spec": {
+    "dimension": 512,
+    "document_prefix": "",
+    "dtype": "float32",
+    "max_sequence_length": 512,
+    "model_name": "BAAI/bge-small-zh-v1.5",
+    "model_version": "534b6bfaaf500e70bcb9f3771cebc940c23b219d",
+    "normalize_embeddings": true,
+    "provider": "sentence_transformers",
+    "query_prefix": "为这个句子生成表示以用于检索相关文章：",
+    "schema_version": 1
+  },
+  "evaluation_set_id": "midea_group_2024_reranker_bge_base_fixed_v1",
+  "hybrid_run_id": "hybrid_run_midea_group_2024_1ac01d0f38859b2ec3b097c6",
+  "latency_summary_ms": {
+    "hybrid_mean": 25.58879996649921,
+    "hybrid_p50": 23.314899997785687,
+    "hybrid_p95": 40.07590003311634,
+    "reranker_mean": 9986.893337481888,
+    "reranker_p50": 10004.579900065437,
+    "reranker_p95": 10372.962899971753,
+    "total_mean": 10012.485612503951,
+    "total_p50": 10029.52539990656,
+    "total_p95": 10400.632599834353
+  },
+  "report_id": "midea_group_2024",
+  "reranker_run_id": "reranker_run_midea_group_2024_972632e63e83a74b5bee9dfe",
+  "reranker_runtime_config": {
+    "batch_size": 4,
+    "device": "cpu",
+    "local_files_only": true,
+    "rerank_candidate_count": 50,
+    "return_count": 50
+  },
+  "reranker_spec": {
+    "architecture": "cross_encoder",
+    "input_template_version": "query_chunk_v1",
+    "max_length": 512,
+    "model_name": "BAAI/bge-reranker-base",
+    "model_revision": "2cfc18c9415c912f9d8155881c133215df768a70",
+    "provider": "sentence_transformers_cross_encoder",
+    "schema_version": 1,
+    "score_type": "cross_encoder_logit"
+  },
+  "retriever_type": "hybrid_reranker",
+  "rrf_config": {
+    "bm25_candidate_count": 50,
+    "dense_candidate_count": 50,
+    "fusion_method": "reciprocal_rank_fusion",
+    "fusion_version": "rrf_v1",
+    "rank_constant": 60,
+    "schema_version": 1
+  },
+  "schema_version": 1,
+  "tokenizer_spec": {
+    "ascii_token_rule": "contiguous_alnum",
+    "boundary_rule": "non_cjk_non_ascii_alnum",
+    "cjk_ngram_size": 2,
+    "cjk_token_rule": "character_ngram",
+    "lowercase_ascii": true,
+    "schema_version": 1,
+    "single_cjk_fallback": "keep_single_character",
+    "tokenizer_name": "deterministic_chinese_bigram",
+    "tokenizer_version": "deterministic_chinese_bigram_v1",
+    "unicode_normalization": "NFKC"
+  }
+}

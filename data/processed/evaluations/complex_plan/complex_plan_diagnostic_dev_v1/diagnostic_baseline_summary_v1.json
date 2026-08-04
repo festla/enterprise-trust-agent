@@ -1,0 +1,283 @@
+{
+  "schema_version": 1,
+  "experiment_id": "complex_diagnostic_dev_v1_baseline_top5_budgeted_context_v1",
+  "split": "diagnostic_dev",
+  "formal_test": false,
+  "experiment_role": "development_failure_diagnosis",
+  "uses_frozen_test_configuration": true,
+  "parameter_retuning_during_run": false,
+  "query_specific_rules_used": false,
+  "gold_fact_ids_available_to_runtime": false,
+  "gold_evidence_ids_available_to_runtime": false,
+  "gold_pdf_pages_available_to_runtime": false,
+  "case_dataset": "data/evaluation/complex_plan/complex_plan_diagnostic_dev_v1.jsonl",
+  "case_dataset_sha256": "79554c2312b2ff45d54e204dad0a4317c596853df1a517736bfc5c71821148e0",
+  "diagnostic_manifest": "data/evaluation/complex_plan/complex_plan_diagnostic_dev_v1_manifest.json",
+  "diagnostic_manifest_sha256": "b01fa76dada161b63691b3d77845824e24750cbd977d5708ed97547e69cdc774",
+  "frozen_config": "data/processed/evaluations/complex_plan/complex_plan_dev_v2/context_budget_frozen_config_v1.json",
+  "frozen_config_sha256": "7f3e01397ca833438b8ef3947e812711e9a2ae50b88efef9f1612c835539a1a3",
+  "frozen_parameter_sha256": "2d6df19d6520c9a6ca8d04d69b6939001a8fbc97f809fde999d84a7d8b41524a",
+  "frozen_parameters": {
+    "base_retrieval": {
+      "base_top_k": 5,
+      "bm25_candidate_count": 50,
+      "dense_candidate_count": 50,
+      "embedding_model_name": "BAAI/bge-small-zh-v1.5",
+      "embedding_model_revision": "534b6bfaaf500e70bcb9f3771cebc940c23b219d",
+      "rank_constant": 60,
+      "rerank_candidate_count": 50,
+      "reranker_model_name": "BAAI/bge-reranker-base",
+      "reranker_model_revision": "2cfc18c9415c912f9d8155881c133215df768a70",
+      "retriever_type": "hybrid_rrf_reranker"
+    },
+    "context_candidate_generation": {
+      "page_window": 1,
+      "strategy_id": "adjacent_page_context_v1"
+    },
+    "context_selection": {
+      "expand_only_when_base_unresolved": true,
+      "lexical_score_version": "query_token_bigram_v1",
+      "max_expanded_chars": 1600,
+      "max_expanded_items": 2,
+      "policy_id": "gated_lexical_adjacent_budget_v1"
+    },
+    "fact_resolution": {
+      "requires_verified_evidence": true,
+      "requires_verified_fact": true,
+      "resolver_version": "registry_context_fact_resolver_v1"
+    }
+  },
+  "run_started_at": "2026-08-03T14:23:01.959141+00:00",
+  "run_completed_at": "2026-08-03T14:25:04.550525+00:00",
+  "case_count": 8,
+  "completed_count": 0,
+  "failed_count": 8,
+  "refused_count": 0,
+  "all_completed": false,
+  "completion_rate": 0.0,
+  "all_queries": {
+    "query_count": 24,
+    "executed_query_count": 11,
+    "target_fact_hit_count": 3,
+    "target_fact_hit_rate": 0.125,
+    "base_target_hit_count": 2,
+    "expansion_required_count": 9,
+    "expansion_recovered_count": 1,
+    "selected_expanded_item_count": 18,
+    "selected_expanded_char_count": 13367
+  },
+  "diagnostic_targets": {
+    "query_count": 8,
+    "executed_query_count": 3,
+    "target_fact_hit_count": 0,
+    "target_fact_hit_rate": 0.0,
+    "base_target_hit_count": 0,
+    "expansion_required_count": 3,
+    "expansion_recovered_count": 0,
+    "selected_expanded_item_count": 6,
+    "selected_expanded_char_count": 4373
+  },
+  "controls": {
+    "query_count": 16,
+    "executed_query_count": 8,
+    "target_fact_hit_count": 3,
+    "target_fact_hit_rate": 0.1875,
+    "base_target_hit_count": 2,
+    "expansion_required_count": 6,
+    "expansion_recovered_count": 1,
+    "selected_expanded_item_count": 12,
+    "selected_expanded_char_count": 8994
+  },
+  "diagnostic_categories": {
+    "adjacent_page_continued_table": {
+      "query_count": 2,
+      "executed_query_count": 0,
+      "target_fact_hit_count": 0,
+      "target_fact_hit_rate": 0.0,
+      "base_target_hit_count": 0,
+      "expansion_required_count": 0,
+      "expansion_recovered_count": 0,
+      "selected_expanded_item_count": 0,
+      "selected_expanded_char_count": 0
+    },
+    "confusable_labels": {
+      "query_count": 1,
+      "executed_query_count": 1,
+      "target_fact_hit_count": 0,
+      "target_fact_hit_rate": 0.0,
+      "base_target_hit_count": 0,
+      "expansion_required_count": 1,
+      "expansion_recovered_count": 0,
+      "selected_expanded_item_count": 2,
+      "selected_expanded_char_count": 1509
+    },
+    "confusable_labels_and_adjacent_page": {
+      "query_count": 1,
+      "executed_query_count": 0,
+      "target_fact_hit_count": 0,
+      "target_fact_hit_rate": 0.0,
+      "base_target_hit_count": 0,
+      "expansion_required_count": 0,
+      "expansion_recovered_count": 0,
+      "selected_expanded_item_count": 0,
+      "selected_expanded_char_count": 0
+    },
+    "multi_fact_structural_retrieval": {
+      "query_count": 1,
+      "executed_query_count": 0,
+      "target_fact_hit_count": 0,
+      "target_fact_hit_rate": 0.0,
+      "base_target_hit_count": 0,
+      "expansion_required_count": 0,
+      "expansion_recovered_count": 0,
+      "selected_expanded_item_count": 0,
+      "selected_expanded_char_count": 0
+    },
+    "page_window_coverage_gap": {
+      "query_count": 1,
+      "executed_query_count": 0,
+      "target_fact_hit_count": 0,
+      "target_fact_hit_rate": 0.0,
+      "base_target_hit_count": 0,
+      "expansion_required_count": 0,
+      "expansion_recovered_count": 0,
+      "selected_expanded_item_count": 0,
+      "selected_expanded_char_count": 0
+    },
+    "same_page_sibling": {
+      "query_count": 2,
+      "executed_query_count": 2,
+      "target_fact_hit_count": 0,
+      "target_fact_hit_rate": 0.0,
+      "base_target_hit_count": 0,
+      "expansion_required_count": 2,
+      "expansion_recovered_count": 0,
+      "selected_expanded_item_count": 4,
+      "selected_expanded_char_count": 2864
+    }
+  },
+  "gate_decision_counts": {
+    "base_resolved": 2,
+    "expansion_required": 9
+  },
+  "answer_exact_match_count": 0,
+  "case_summaries": [
+    {
+      "case_id": "complex_031",
+      "status": "failed",
+      "planned_query_count": 2,
+      "executed_query_count": 1,
+      "target_fact_hit_count": 0,
+      "all_query_targets_hit": false,
+      "diagnostic_target_query_id": "q1",
+      "diagnostic_category": "same_page_sibling",
+      "diagnostic_target_hit": false,
+      "error_stage": "retrieval",
+      "error_message": "q1 没有解析出 FinancialFact"
+    },
+    {
+      "case_id": "complex_032",
+      "status": "failed",
+      "planned_query_count": 2,
+      "executed_query_count": 2,
+      "target_fact_hit_count": 1,
+      "all_query_targets_hit": false,
+      "diagnostic_target_query_id": "q2",
+      "diagnostic_category": "same_page_sibling",
+      "diagnostic_target_hit": false,
+      "error_stage": "retrieval",
+      "error_message": "q2 没有解析出 FinancialFact"
+    },
+    {
+      "case_id": "complex_033",
+      "status": "failed",
+      "planned_query_count": 2,
+      "executed_query_count": 1,
+      "target_fact_hit_count": 0,
+      "all_query_targets_hit": false,
+      "diagnostic_target_query_id": "q2",
+      "diagnostic_category": "adjacent_page_continued_table",
+      "diagnostic_target_hit": false,
+      "error_stage": "retrieval",
+      "error_message": "q1 没有解析出 FinancialFact"
+    },
+    {
+      "case_id": "complex_034",
+      "status": "failed",
+      "planned_query_count": 4,
+      "executed_query_count": 1,
+      "target_fact_hit_count": 0,
+      "all_query_targets_hit": false,
+      "diagnostic_target_query_id": "q2",
+      "diagnostic_category": "adjacent_page_continued_table",
+      "diagnostic_target_hit": false,
+      "error_stage": "retrieval",
+      "error_message": "q1 没有解析出 FinancialFact"
+    },
+    {
+      "case_id": "complex_035",
+      "status": "failed",
+      "planned_query_count": 2,
+      "executed_query_count": 2,
+      "target_fact_hit_count": 1,
+      "all_query_targets_hit": false,
+      "diagnostic_target_query_id": "q2",
+      "diagnostic_category": "confusable_labels",
+      "diagnostic_target_hit": false,
+      "error_stage": "retrieval",
+      "error_message": "q2 没有解析出 FinancialFact"
+    },
+    {
+      "case_id": "complex_036",
+      "status": "failed",
+      "planned_query_count": 4,
+      "executed_query_count": 1,
+      "target_fact_hit_count": 0,
+      "all_query_targets_hit": false,
+      "diagnostic_target_query_id": "q4",
+      "diagnostic_category": "confusable_labels_and_adjacent_page",
+      "diagnostic_target_hit": false,
+      "error_stage": "retrieval",
+      "error_message": "q1 没有解析出 FinancialFact"
+    },
+    {
+      "case_id": "complex_037",
+      "status": "failed",
+      "planned_query_count": 4,
+      "executed_query_count": 2,
+      "target_fact_hit_count": 1,
+      "all_query_targets_hit": false,
+      "diagnostic_target_query_id": "q4",
+      "diagnostic_category": "page_window_coverage_gap",
+      "diagnostic_target_hit": false,
+      "error_stage": "retrieval",
+      "error_message": "q2 没有解析出 FinancialFact"
+    },
+    {
+      "case_id": "complex_038",
+      "status": "failed",
+      "planned_query_count": 4,
+      "executed_query_count": 1,
+      "target_fact_hit_count": 0,
+      "all_query_targets_hit": false,
+      "diagnostic_target_query_id": "q2",
+      "diagnostic_category": "multi_fact_structural_retrieval",
+      "diagnostic_target_hit": false,
+      "error_stage": "retrieval",
+      "error_message": "q1 没有解析出 FinancialFact"
+    }
+  ],
+  "retriever_ids": [
+    "complex_hybrid_reranker_bge_fixed_v1_adjacent_page_context_v1_gated_lexical_adjacent_budget_v1_registry_context_fact_resolver_v1"
+  ],
+  "generator_ids": [
+    "deterministic_financial_answer_generator_v2"
+  ],
+  "top_k_values": [
+    5
+  ],
+  "result_path": "data/processed/evaluations/complex_plan/complex_plan_diagnostic_dev_v1/diagnostic_baseline_top5_budgeted_context_v1.jsonl",
+  "result_sha256": "1084ed05e123c2db3ec576da792f04d8de2de30b5f4384cbe972f06bb89af5a7",
+  "audit_path": "data/processed/evaluations/complex_plan/complex_plan_diagnostic_dev_v1/diagnostic_baseline_query_audit_v1.jsonl",
+  "audit_sha256": "f3356523a13d25788207bd132fa934437acd414bb62bbdd206fbec139c521766"
+}

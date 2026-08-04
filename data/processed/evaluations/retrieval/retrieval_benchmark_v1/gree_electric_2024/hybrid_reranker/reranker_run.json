@@ -1,0 +1,170 @@
+{
+  "bm25_index_id": "bm25_index_gree_electric_2024_e1ae487ee65789414d893a07",
+  "case_timings": [
+    {
+      "case_id": "gree_2024_revenue",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 35.50210013054311,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 10042.14259982109,
+      "total_latency_ms": 10077.647099969909
+    },
+    {
+      "case_id": "gree_2024_parent_net_profit",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 17.84890005365014,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 10547.339400043711,
+      "total_latency_ms": 10565.191099885851
+    },
+    {
+      "case_id": "gree_2024_total_operating_revenue",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 20.756799960508943,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9848.902099998668,
+      "total_latency_ms": 9869.663200108334
+    },
+    {
+      "case_id": "gree_2024_operating_cost",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 20.15249989926815,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9736.590599874035,
+      "total_latency_ms": 9756.746199913323
+    },
+    {
+      "case_id": "gree_2024_net_profit",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 16.699699917808175,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9824.603100074455,
+      "total_latency_ms": 9841.30569989793
+    },
+    {
+      "case_id": "gree_2024_cash_and_cash_equivalents",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 21.849999902769923,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9088.06290011853,
+      "total_latency_ms": 9109.91770005785
+    },
+    {
+      "case_id": "gree_2024_short_term_borrowings",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 20.23180015385151,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9098.486799979582,
+      "total_latency_ms": 9118.7218001578
+    },
+    {
+      "case_id": "gree_2024_undistributed_profit",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 21.829599980264902,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9409.426300087944,
+      "total_latency_ms": 9431.259899865836
+    },
+    {
+      "case_id": "gree_2024_parent_company_revenue",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 16.359400004148483,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9328.800900140777,
+      "total_latency_ms": 9345.163699937984
+    },
+    {
+      "case_id": "gree_2024_manufacturing_revenue",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 21.468699909746647,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9863.053699955344,
+      "total_latency_ms": 9884.525400120765
+    },
+    {
+      "case_id": "gree_2024_domestic_main_revenue",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 22.66849996522069,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9790.53150000982,
+      "total_latency_ms": 9813.202999997884
+    },
+    {
+      "case_id": "gree_2024_basic_eps",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 20.816799951717257,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9910.235099960119,
+      "total_latency_ms": 9931.054800050333
+    }
+  ],
+  "chunk_dataset_id": "chunk_dataset_gree_electric_2024_5b7a6f1f4451d2fb3eb404a7",
+  "dense_index_created": false,
+  "dense_index_id": "vector_index_gree_electric_2024_fef70b3826a90ba8978b57ff",
+  "embedding_spec": {
+    "dimension": 512,
+    "document_prefix": "",
+    "dtype": "float32",
+    "max_sequence_length": 512,
+    "model_name": "BAAI/bge-small-zh-v1.5",
+    "model_version": "534b6bfaaf500e70bcb9f3771cebc940c23b219d",
+    "normalize_embeddings": true,
+    "provider": "sentence_transformers",
+    "query_prefix": "为这个句子生成表示以用于检索相关文章：",
+    "schema_version": 1
+  },
+  "evaluation_set_id": "retrieval_benchmark_v1_gree_electric_2024",
+  "hybrid_run_id": "hybrid_run_gree_electric_2024_36d1820c643f7130fdb978ca",
+  "latency_summary_ms": {
+    "hybrid_mean": 21.34873331912483,
+    "hybrid_p50": 20.756799960508943,
+    "hybrid_p95": 35.50210013054311,
+    "reranker_mean": 9707.347916672006,
+    "reranker_p50": 9790.53150000982,
+    "reranker_p95": 10547.339400043711,
+    "total_mean": 9728.69996666365,
+    "total_p50": 9813.202999997884,
+    "total_p95": 10565.191099885851
+  },
+  "report_id": "gree_electric_2024",
+  "reranker_run_id": "reranker_run_gree_electric_2024_e7cd81554ae03210c1422011",
+  "reranker_runtime_config": {
+    "batch_size": 4,
+    "device": "cpu",
+    "local_files_only": true,
+    "rerank_candidate_count": 50,
+    "return_count": 50
+  },
+  "reranker_spec": {
+    "architecture": "cross_encoder",
+    "input_template_version": "query_chunk_v1",
+    "max_length": 512,
+    "model_name": "BAAI/bge-reranker-base",
+    "model_revision": "2cfc18c9415c912f9d8155881c133215df768a70",
+    "provider": "sentence_transformers_cross_encoder",
+    "schema_version": 1,
+    "score_type": "cross_encoder_logit"
+  },
+  "retriever_type": "hybrid_reranker",
+  "rrf_config": {
+    "bm25_candidate_count": 50,
+    "dense_candidate_count": 50,
+    "fusion_method": "reciprocal_rank_fusion",
+    "fusion_version": "rrf_v1",
+    "rank_constant": 60,
+    "schema_version": 1
+  },
+  "schema_version": 1,
+  "tokenizer_spec": {
+    "ascii_token_rule": "contiguous_alnum",
+    "boundary_rule": "non_cjk_non_ascii_alnum",
+    "cjk_ngram_size": 2,
+    "cjk_token_rule": "character_ngram",
+    "lowercase_ascii": true,
+    "schema_version": 1,
+    "single_cjk_fallback": "keep_single_character",
+    "tokenizer_name": "deterministic_chinese_bigram",
+    "tokenizer_version": "deterministic_chinese_bigram_v1",
+    "unicode_normalization": "NFKC"
+  }
+}

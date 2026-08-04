@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "status": "answered",
+  "question": "美的集团2024年营业收入是多少？",
+  "metric_name": "营业收入",
+  "company_id": "midea_group",
+  "report_id": "midea_group_2024",
+  "fiscal_year": 2024,
+  "answer_text": "美的集团2024年营业收入为407,149,600千元 [E1]。",
+  "citation_ids": [
+    "E1"
+  ],
+  "citations": [
+    {
+      "citation_id": "E1",
+      "company_id": "midea_group",
+      "report_id": "midea_group_2024",
+      "report_title": "美的集团：2024年年度报告",
+      "source_name": "同花顺公司财报入口",
+      "fiscal_year": 2024,
+      "document_id": "doc_midea_group_2024_b17a9b9b84bca1d2a4e4a3ca",
+      "page_id": "doc_midea_group_2024_b17a9b9b84bca1d2a4e4a3ca_page_0158",
+      "pdf_page": 158,
+      "printed_page": 157,
+      "chunk_id": "chunk_midea_group_2024_a440b106dbc73c66de0e5303",
+      "retrieval_rank": 1,
+      "retrieval_score": 0.7060231566429138
+    }
+  ],
+  "used_chunk_ids": [
+    "chunk_midea_group_2024_a440b106dbc73c66de0e5303"
+  ],
+  "generator_id": "bailian_openai:qwen3.7-plus",
+  "refusal_reason": null
+}

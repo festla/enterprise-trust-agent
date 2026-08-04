@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "experiment_id": "complex_plan_test_v1_frozen_top5_budgeted_context_v1",
+  "split": "test",
+  "formal_test": true,
+  "post_test_retuning_allowed": false,
+  "case_dataset": "data/evaluation/complex_plan/complex_plan_test_v1.jsonl",
+  "case_dataset_sha256": "ea65ac71fd9cdee06db1c9eef0a733e061fd828869775a6b17f90231307c1049",
+  "calculation_dataset": "data/evaluation/complex_plan/gold_calculations_test_v1.jsonl",
+  "calculation_dataset_sha256": "36217aa94b2da6792d41ac09db24999c12427d3913c59262c9cdb6500811228d",
+  "test_manifest_sha256": "5ea0ea7777c583acb55a2aca0c7c25bda96411e0bd3d5db99dcd9f18258004c0",
+  "frozen_config_path": "data/processed/evaluations/complex_plan/complex_plan_dev_v2/context_budget_frozen_config_v1.json",
+  "frozen_config_sha256": "7f3e01397ca833438b8ef3947e812711e9a2ae50b88efef9f1612c835539a1a3",
+  "frozen_parameter_sha256": "2d6df19d6520c9a6ca8d04d69b6939001a8fbc97f809fde999d84a7d8b41524a",
+  "frozen_parameters": {
+    "base_retrieval": {
+      "base_top_k": 5,
+      "bm25_candidate_count": 50,
+      "dense_candidate_count": 50,
+      "embedding_model_name": "BAAI/bge-small-zh-v1.5",
+      "embedding_model_revision": "534b6bfaaf500e70bcb9f3771cebc940c23b219d",
+      "rank_constant": 60,
+      "rerank_candidate_count": 50,
+      "reranker_model_name": "BAAI/bge-reranker-base",
+      "reranker_model_revision": "2cfc18c9415c912f9d8155881c133215df768a70",
+      "retriever_type": "hybrid_rrf_reranker"
+    },
+    "context_candidate_generation": {
+      "page_window": 1,
+      "strategy_id": "adjacent_page_context_v1"
+    },
+    "context_selection": {
+      "expand_only_when_base_unresolved": true,
+      "lexical_score_version": "query_token_bigram_v1",
+      "max_expanded_chars": 1600,
+      "max_expanded_items": 2,
+      "policy_id": "gated_lexical_adjacent_budget_v1"
+    },
+    "fact_resolution": {
+      "requires_verified_evidence": true,
+      "requires_verified_fact": true,
+      "resolver_version": "registry_context_fact_resolver_v1"
+    }
+  },
+  "run_started_at": "2026-08-03T11:11:15.388674+00:00",
+  "run_completed_at": "2026-08-03T11:16:10.301119+00:00",
+  "case_count": 10,
+  "completed_count": 4,
+  "failed_count": 6,
+  "refused_count": 0,
+  "all_completed": false,
+  "completion_rate": 0.4,
+  "planned_query_count": 34,
+  "executed_query_count": 26,
+  "resolved_query_count": 20,
+  "query_resolution_rate": 0.5882352941176471,
+  "calculation_trace_count": 3,
+  "completed_calculation_count": 3,
+  "answer_exact_match_count": 1,
+  "fact_reference_exact_match_count": 4,
+  "evidence_reference_exact_match_count": 4,
+  "calculation_reference_exact_match_count": 4,
+  "base_resolved_query_count": 17,
+  "expansion_required_query_count": 9,
+  "expansion_recovered_query_count": 3,
+  "selected_expanded_item_count": 18,
+  "selected_expanded_char_count": 12830,
+  "retriever_ids": [
+    "complex_hybrid_reranker_bge_fixed_v1_adjacent_page_context_v1_gated_lexical_adjacent_budget_v1_registry_context_fact_resolver_v1"
+  ],
+  "generator_ids": [
+    "deterministic_financial_answer_generator_v2"
+  ],
+  "top_k_values": [
+    5
+  ],
+  "failure_records": [
+    {
+      "case_id": "complex_021",
+      "status": "failed",
+      "error_stage": "retrieval",
+      "error_message": "q3 没有解析出 FinancialFact",
+      "unresolved_query_ids": [
+        "q3"
+      ]
+    },
+    {
+      "case_id": "complex_022",
+      "status": "failed",
+      "error_stage": "retrieval",
+      "error_message": "q2 没有解析出 FinancialFact",
+      "unresolved_query_ids": [
+        "q2"
+      ]
+    },
+    {
+      "case_id": "complex_023",
+      "status": "failed",
+      "error_stage": "retrieval",
+      "error_message": "q2 没有解析出 FinancialFact",
+      "unresolved_query_ids": [
+        "q2"
+      ]
+    },
+    {
+      "case_id": "complex_024",
+      "status": "failed",
+      "error_stage": "retrieval",
+      "error_message": "q2 没有解析出 FinancialFact",
+      "unresolved_query_ids": [
+        "q2"
+      ]
+    },
+    {
+      "case_id": "complex_025",
+      "status": "failed",
+      "error_stage": "retrieval",
+      "error_message": "q1 没有解析出 FinancialFact",
+      "unresolved_query_ids": [
+        "q1"
+      ]
+    },
+    {
+      "case_id": "complex_027",
+      "status": "failed",
+      "error_stage": "retrieval",
+      "error_message": "q1 没有解析出 FinancialFact",
+      "unresolved_query_ids": [
+        "q1"
+      ]
+    }
+  ],
+  "result_path": "data/processed/evaluations/complex_plan/complex_plan_test_v1/formal_test_top5_budgeted_context_v1.jsonl",
+  "result_sha256": "e2da1c014d37c79a56c1f2749aee00744b44b89be28b737d9be6e22401f726dd",
+  "audit_path": "data/processed/evaluations/complex_plan/complex_plan_test_v1/formal_test_context_audit_v1.jsonl",
+  "audit_sha256": "f01ec41bf19348db2ba56d1a18b20a9e8bcc16bee820dfc91f7662009e333c52"
+}

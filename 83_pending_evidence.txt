@@ -1,0 +1,785 @@
+@'
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
+from hashlib import sha256
+from pathlib import Path
+
+import yaml
+
+from app.schemas.evidence import SourceEvidence
+from app.schemas.financial_fact import (
+    FactEvidenceLink,
+    FinancialFact,
+)
+from app.services.registry_loader import (
+    load_registry_bundle,
+)
+
+
+ROOT = Path("data/processed/registries")
+
+EVIDENCE_PATH = ROOT / "evidences.yaml"
+FACT_PATH = ROOT / "financial_facts.yaml"
+REPORT_PATH = ROOT / "reports.yaml"
+METRIC_PATH = ROOT / "metrics.yaml"
+COMPANY_PATH = ROOT / "companies.yaml"
+
+EVIDENCE_BACKUP = (
+    ROOT
+    / "evidences.before_complex_test_source_batch_v1.yaml"
+)
+
+FACT_BACKUP = (
+    ROOT
+    / "financial_facts.before_complex_test_source_batch_v1.yaml"
+)
+
+
+BS = "balance_sheet"
+IS = "income_statement"
+CF = "cash_flow_statement"
+
+CNY = "CNY"
+CNY_THOUSAND = "CNY_thousand"
+
+M_BAL = (
+    "\u5408\u5e76\u53ca\u516c\u53f8"
+    "\u8d44\u4ea7\u8d1f\u503a\u8868"
+)
+M_BAL_CONT = M_BAL + "\uff08\u7eed\uff09"
+M_INC = (
+    "2024\u5e74\u5ea6\u5408\u5e76"
+    "\u53ca\u516c\u53f8\u5229\u6da6\u8868"
+)
+
+BAL = "\u5408\u5e76\u8d44\u4ea7\u8d1f\u503a\u8868"
+BAL_CONT = BAL + "\uff08\u7eed\uff09"
+INC = "\u5408\u5e76\u5229\u6da6\u8868"
+CASH = "\u5408\u5e76\u73b0\u91d1\u6d41\u91cf\u8868"
+
+M_BAL_COL = (
+    "2024\u5e7412\u670831\u65e5\u5408\u5e76"
+)
+BAL_COL = "2024\u5e7412\u670831\u65e5"
+HIS_BAL_COL = (
+    "\u671f\u672b\u4f59\u989d"
+    "\uff082024\u5e7412\u670831\u65e5\uff09"
+)
+INC_COL = "2024\u5e74\u5ea6"
+M_INC_COL = INC_COL + "\u5408\u5e76"
+
+
+ROWS = {
+    "short_term_borrowings": "\u77ed\u671f\u501f\u6b3e",
+    "long_term_borrowings": "\u957f\u671f\u501f\u6b3e",
+    "bonds_payable": "\u5e94\u4ed8\u503a\u5238",
+    "fixed_assets": "\u56fa\u5b9a\u8d44\u4ea7",
+    "intangible_assets": "\u65e0\u5f62\u8d44\u4ea7",
+    "goodwill": "\u5546\u8a89",
+    "operating_profit": "\u8425\u4e1a\u5229\u6da6",
+    "total_profit": "\u5229\u6da6\u603b\u989d",
+    "net_profit_attributable_to_parent": (
+        "\u5f52\u5c5e\u4e8e\u6bcd\u516c\u53f8"
+        "\u80a1\u4e1c\u7684\u51c0\u5229\u6da6"
+    ),
+    "current_assets": "\u6d41\u52a8\u8d44\u4ea7\u5408\u8ba1",
+    "current_liabilities": (
+        "\u6d41\u52a8\u8d1f\u503a\u5408\u8ba1"
+    ),
+    "total_liabilities": "\u8d1f\u503a\u5408\u8ba1",
+    "total_equity": "\u6240\u6709\u8005\u6743\u76ca\u5408\u8ba1",
+    "net_cash_flow_from_financing_activities": (
+        "\u7b79\u8d44\u6d3b\u52a8\u4ea7\u751f\u7684"
+        "\u73b0\u91d1\u6d41\u91cf\u51c0\u989d"
+    ),
+    "income_tax_expense": "\u6240\u5f97\u7a0e\u8d39\u7528",
+    "monetary_funds": "\u8d27\u5e01\u8d44\u91d1",
+    "management_expenses": "\u7ba1\u7406\u8d39\u7528",
+}
+
+STOCK_EQUITY = "\u80a1\u4e1c\u6743\u76ca\u5408\u8ba1"
+
+
+DOCUMENT_IDS = {
+    "midea_group": (
+        "doc_midea_group_2024_"
+        "b17a9b9b84bca1d2a4e4a3ca"
+    ),
+    "gree_electric": (
+        "doc_gree_electric_2024_"
+        "c7184706caf5f57c04a79599"
+    ),
+    "haier_smart_home": (
+        "doc_haier_smart_home_2024_"
+        "cb2830d04860a0c18a491b99"
+    ),
+    "hisense_home": (
+        "doc_hisense_home_2024_"
+        "069ab19e18a631bada3f7040"
+    ),
+}
+
+
+CHUNK_PATHS = {
+    "midea_group": Path(
+        "data/processed/chunks/midea_group_2024/"
+        "chunk_dataset_midea_group_2024_"
+        "d27f3c7919cfba40f995b86a/chunks.jsonl"
+    ),
+    "gree_electric": Path(
+        "data/processed/chunks/gree_electric_2024/"
+        "chunk_dataset_gree_electric_2024_"
+        "5b7a6f1f4451d2fb3eb404a7/chunks.jsonl"
+    ),
+    "haier_smart_home": Path(
+        "data/processed/chunks/haier_smart_home_2024/"
+        "chunk_dataset_haier_smart_home_2024_"
+        "6aa9f9aaff9d79d873269575/chunks.jsonl"
+    ),
+    "hisense_home": Path(
+        "data/processed/chunks/hisense_home_2024/"
+        "chunk_dataset_hisense_home_2024_"
+        "e4037c657b0225201366f46b/chunks.jsonl"
+    ),
+}
+
+
+def make_spec(
+    company_id,
+    metric_id,
+    statement_type,
+    pdf_page,
+    printed_page,
+    table_name,
+    row_label,
+    column_label,
+    cell_value,
+    raw_value,
+    raw_unit,
+    chunk_id,
+):
+    return {
+        "company_id": company_id,
+        "metric_id": metric_id,
+        "statement_type": statement_type,
+        "pdf_page": pdf_page,
+        "printed_page": printed_page,
+        "table_name": table_name,
+        "row_label": row_label,
+        "column_label": column_label,
+        "cell_value": cell_value,
+        "raw_value": raw_value,
+        "raw_unit": raw_unit,
+        "chunk_id": chunk_id,
+    }
+
+
+SPECS = [
+    make_spec(
+        "midea_group", "short_term_borrowings", BS,
+        157, 156, M_BAL_CONT, ROWS["short_term_borrowings"],
+        M_BAL_COL, "31,008,549", "31008549", CNY_THOUSAND,
+        "chunk_midea_group_2024_c68443303be1cb3a8173b478",
+    ),
+    make_spec(
+        "midea_group", "long_term_borrowings", BS,
+        157, 156, M_BAL_CONT, ROWS["long_term_borrowings"],
+        M_BAL_COL, "10,491,757", "10491757", CNY_THOUSAND,
+        "chunk_midea_group_2024_c68443303be1cb3a8173b478",
+    ),
+    make_spec(
+        "midea_group", "bonds_payable", BS,
+        157, 156, M_BAL_CONT, ROWS["bonds_payable"],
+        M_BAL_COL, "3,266,775", "3266775", CNY_THOUSAND,
+        "chunk_midea_group_2024_18adc7ada252337db4e7084f",
+    ),
+    make_spec(
+        "midea_group", "total_equity", BS,
+        157, 156, M_BAL_CONT, STOCK_EQUITY,
+        M_BAL_COL, "227,667,391", "227667391", CNY_THOUSAND,
+        "chunk_midea_group_2024_b59aa109b64c3d8bbe6ee1a1",
+    ),
+    make_spec(
+        "midea_group", "total_profit", IS,
+        158, 157, M_INC, ROWS["total_profit"],
+        M_INC_COL, "46,689,746", "46689746", CNY_THOUSAND,
+        "chunk_midea_group_2024_41bdbef3d2eb79d8e7dbbb28",
+    ),
+    make_spec(
+        "midea_group", "income_tax_expense", IS,
+        158, 157, M_INC, ROWS["income_tax_expense"],
+        M_INC_COL, "(7,932,532)", "7932532", CNY_THOUSAND,
+        "chunk_midea_group_2024_41bdbef3d2eb79d8e7dbbb28",
+    ),
+    make_spec(
+        "midea_group", "monetary_funds", BS,
+        156, 155, M_BAL, ROWS["monetary_funds"],
+        M_BAL_COL, "140,410,308", "140410308", CNY_THOUSAND,
+        "chunk_midea_group_2024_34d05acf1ef6b9358d167320",
+    ),
+    make_spec(
+        "midea_group", "management_expenses", IS,
+        158, 157, M_INC, ROWS["management_expenses"],
+        M_INC_COL, "(14,505,864)", "14505864", CNY_THOUSAND,
+        "chunk_midea_group_2024_a440b106dbc73c66de0e5303",
+    ),
+    make_spec(
+        "midea_group", "current_assets", BS,
+        156, 155, M_BAL, ROWS["current_assets"],
+        M_BAL_COL, "389,063,786", "389063786", CNY_THOUSAND,
+        "chunk_midea_group_2024_34d05acf1ef6b9358d167320",
+    ),
+    make_spec(
+        "midea_group", "current_liabilities", BS,
+        157, 156, M_BAL_CONT, ROWS["current_liabilities"],
+        M_BAL_COL, "351,819,806", "351819806", CNY_THOUSAND,
+        "chunk_midea_group_2024_c68443303be1cb3a8173b478",
+    ),
+
+    make_spec(
+        "gree_electric", "total_equity", BS,
+        112, 112, BAL_CONT, STOCK_EQUITY,
+        BAL_COL, "141,513,694,947.97", "141513694947.97", CNY,
+        "chunk_gree_electric_2024_5d5baf4bf41662433f65aaef",
+    ),
+    make_spec(
+        "gree_electric", "total_profit", IS,
+        113, 113, INC, ROWS["total_profit"],
+        INC_COL, "36,895,995,848.30", "36895995848.30", CNY,
+        "chunk_gree_electric_2024_3d186750d86d9567047e4125",
+    ),
+    make_spec(
+        "gree_electric", "income_tax_expense", IS,
+        113, 113, INC, ROWS["income_tax_expense"],
+        INC_COL, "4,524,926,560.95", "4524926560.95", CNY,
+        "chunk_gree_electric_2024_3d186750d86d9567047e4125",
+    ),
+    make_spec(
+        "gree_electric", "monetary_funds", BS,
+        111, 111, BAL, ROWS["monetary_funds"],
+        BAL_COL, "113,900,461,797.94", "113900461797.94", CNY,
+        "chunk_gree_electric_2024_0b4d1c0430510482b3463928",
+    ),
+    make_spec(
+        "gree_electric", "management_expenses", IS,
+        113, 113, INC, ROWS["management_expenses"],
+        INC_COL, "6,057,608,713.94", "6057608713.94", CNY,
+        "chunk_gree_electric_2024_d8ee59612ee26c3a21471b23",
+    ),
+    make_spec(
+        "gree_electric", "current_assets", BS,
+        111, 111, BAL, ROWS["current_assets"],
+        BAL_COL, "224,802,908,651.88", "224802908651.88", CNY,
+        "chunk_gree_electric_2024_0b4d1c0430510482b3463928",
+    ),
+    make_spec(
+        "gree_electric", "current_liabilities", BS,
+        112, 112, BAL_CONT, ROWS["current_liabilities"],
+        BAL_COL, "201,125,441,381.86", "201125441381.86", CNY,
+        "chunk_gree_electric_2024_97d912a42ffe18a7195896d3",
+    ),
+
+    make_spec(
+        "haier_smart_home", "fixed_assets", BS,
+        118, 118, BAL, ROWS["fixed_assets"],
+        BAL_COL, "37,518,645,325.08", "37518645325.08", CNY,
+        "chunk_haier_smart_home_2024_7f7d6a854e2cde594a5bca41",
+    ),
+    make_spec(
+        "haier_smart_home", "intangible_assets", BS,
+        118, 118, BAL, ROWS["intangible_assets"],
+        BAL_COL, "14,034,674,912.54", "14034674912.54", CNY,
+        "chunk_haier_smart_home_2024_7f7d6a854e2cde594a5bca41",
+    ),
+    make_spec(
+        "haier_smart_home", "goodwill", BS,
+        118, 118, BAL, ROWS["goodwill"],
+        BAL_COL, "27,384,007,599.06", "27384007599.06", CNY,
+        "chunk_haier_smart_home_2024_7f7d6a854e2cde594a5bca41",
+    ),
+    make_spec(
+        "haier_smart_home",
+        "net_cash_flow_from_financing_activities", CF,
+        126, 126, CASH,
+        ROWS["net_cash_flow_from_financing_activities"],
+        INC_COL, "-7,913,904,092.66", "-7913904092.66", CNY,
+        "chunk_haier_smart_home_2024_be20d0ced32ee23adbf15141",
+    ),
+    make_spec(
+        "haier_smart_home", "management_expenses", IS,
+        122, 122, INC, ROWS["management_expenses"],
+        INC_COL, "12,110,235,915.35", "12110235915.35", CNY,
+        "chunk_haier_smart_home_2024_c4bcc0d67f61ba7aa731df88",
+    ),
+    make_spec(
+        "haier_smart_home", "current_assets", BS,
+        118, 118, BAL, ROWS["current_assets"],
+        BAL_COL, "151,689,536,276.72", "151689536276.72", CNY,
+        "chunk_haier_smart_home_2024_7f7d6a854e2cde594a5bca41",
+    ),
+    make_spec(
+        "haier_smart_home", "current_liabilities", BS,
+        119, 119, BAL, ROWS["current_liabilities"],
+        BAL_COL, "149,571,374,519.76", "149571374519.76", CNY,
+        "chunk_haier_smart_home_2024_cceb1aa581911957d77e7589",
+    ),
+
+    make_spec(
+        "hisense_home", "operating_profit", IS,
+        117, 115, INC, ROWS["operating_profit"],
+        INC_COL, "5,679,142,269.33", "5679142269.33", CNY,
+        "chunk_hisense_home_2024_0180b7bc16ee829911f2114a",
+    ),
+    make_spec(
+        "hisense_home", "total_profit", IS,
+        117, 115, INC, ROWS["total_profit"],
+        INC_COL, "5,966,389,023.89", "5966389023.89", CNY,
+        "chunk_hisense_home_2024_f676143a5ed8f5a16d46036e",
+    ),
+    make_spec(
+        "hisense_home",
+        "net_profit_attributable_to_parent", IS,
+        117, 115, INC,
+        ROWS["net_profit_attributable_to_parent"],
+        INC_COL, "3,347,881,773.89", "3347881773.89", CNY,
+        "chunk_hisense_home_2024_f676143a5ed8f5a16d46036e",
+    ),
+    make_spec(
+        "hisense_home", "current_assets", BS,
+        112, 110, BAL, ROWS["current_assets"],
+        HIS_BAL_COL, "52,507,910,456.50", "52507910456.50", CNY,
+        "chunk_hisense_home_2024_66fe8eed46d1a5f7ddf37bb6",
+    ),
+    make_spec(
+        "hisense_home", "current_liabilities", BS,
+        113, 111, BAL, ROWS["current_liabilities"],
+        HIS_BAL_COL, "47,919,366,943.34", "47919366943.34", CNY,
+        "chunk_hisense_home_2024_ea5997250c7128793c5a01d2",
+    ),
+    make_spec(
+        "hisense_home", "total_liabilities", BS,
+        114, 112, BAL, ROWS["total_liabilities"],
+        HIS_BAL_COL, "50,327,415,106.20", "50327415106.20", CNY,
+        "chunk_hisense_home_2024_92085abf88bada72bc7b3004",
+    ),
+    make_spec(
+        "hisense_home", "total_equity", BS,
+        114, 112, BAL, ROWS["total_equity"],
+        HIS_BAL_COL, "19,374,524,711.13", "19374524711.13", CNY,
+        "chunk_hisense_home_2024_92085abf88bada72bc7b3004",
+    ),
+    make_spec(
+        "hisense_home",
+        "net_cash_flow_from_financing_activities", CF,
+        121, 119, CASH,
+        ROWS["net_cash_flow_from_financing_activities"],
+        INC_COL, "-5,121,320,126.09", "-5121320126.09", CNY,
+        "chunk_hisense_home_2024_9d875991be2f880862b8027a",
+    ),
+    make_spec(
+        "hisense_home", "monetary_funds", BS,
+        112, 110, BAL, ROWS["monetary_funds"],
+        HIS_BAL_COL, "4,397,693,443.73", "4397693443.73", CNY,
+        "chunk_hisense_home_2024_66fe8eed46d1a5f7ddf37bb6",
+    ),
+    make_spec(
+        "hisense_home", "management_expenses", IS,
+        117, 115, INC, ROWS["management_expenses"],
+        INC_COL, "2,499,492,962.69", "2499492962.69", CNY,
+        "chunk_hisense_home_2024_0180b7bc16ee829911f2114a",
+    ),
+]
+
+
+if len(SPECS) != 34:
+    raise SystemExit(
+        f"unexpected_spec_count={len(SPECS)}"
+    )
+
+
+chunk_records = {}
+
+for company_id, chunk_path in CHUNK_PATHS.items():
+    if not chunk_path.is_file():
+        raise SystemExit(
+            f"missing_chunk_file={chunk_path}"
+        )
+
+    for line in chunk_path.read_text(
+        encoding="utf-8"
+    ).splitlines():
+        if not line.strip():
+            continue
+
+        record = yaml.safe_load(line)
+        chunk_records[record["chunk_id"]] = record
+
+
+evidence_data = yaml.safe_load(
+    EVIDENCE_PATH.read_text(encoding="utf-8")
+)
+
+fact_data = yaml.safe_load(
+    FACT_PATH.read_text(encoding="utf-8")
+)
+
+report_data = yaml.safe_load(
+    REPORT_PATH.read_text(encoding="utf-8")
+)
+
+metric_data = yaml.safe_load(
+    METRIC_PATH.read_text(encoding="utf-8")
+)
+
+
+existing_evidence_ids = {
+    item["evidence_id"]
+    for item in evidence_data["evidences"]
+}
+
+existing_fact_ids = {
+    item["fact_id"]
+    for item in fact_data["financial_facts"]
+}
+
+existing_link_fact_ids = {
+    item["fact_id"]
+    for item in fact_data["fact_evidence_links"]
+}
+
+report_ids = {
+    item["report_id"]
+    for item in report_data["reports"]
+}
+
+metric_ids = {
+    item["metric_id"]
+    for item in metric_data["metrics"]
+}
+
+
+created_at = datetime.now(
+    timezone(timedelta(hours=8))
+).isoformat()
+
+new_evidences = []
+new_facts = []
+new_links = []
+
+
+for spec in SPECS:
+    company_id = spec["company_id"]
+    report_id = f"{company_id}_2024"
+    metric_id = spec["metric_id"]
+
+    evidence_id = (
+        f"evidence_{company_id}_2024_{metric_id}"
+    )
+    fact_id = (
+        f"fact_{company_id}_2024_{metric_id}"
+    )
+
+    if report_id not in report_ids:
+        raise SystemExit(
+            f"missing_report_id={report_id}"
+        )
+
+    if metric_id not in metric_ids:
+        raise SystemExit(
+            f"missing_metric_id={metric_id}"
+        )
+
+    if evidence_id in existing_evidence_ids:
+        raise SystemExit(
+            f"duplicate_evidence_id={evidence_id}"
+        )
+
+    if fact_id in existing_fact_ids:
+        raise SystemExit(
+            f"duplicate_fact_id={fact_id}"
+        )
+
+    if fact_id in existing_link_fact_ids:
+        raise SystemExit(
+            f"duplicate_link_fact_id={fact_id}"
+        )
+
+    chunk = chunk_records.get(
+        spec["chunk_id"]
+    )
+
+    if chunk is None:
+        raise SystemExit(
+            f"missing_chunk_id={spec['chunk_id']}"
+        )
+
+    if chunk["report_id"] != report_id:
+        raise SystemExit(
+            f"chunk_report_mismatch={spec['chunk_id']}"
+        )
+
+    if chunk["pdf_page"] != spec["pdf_page"]:
+        raise SystemExit(
+            f"chunk_page_mismatch={spec['chunk_id']}"
+        )
+
+    if spec["row_label"] not in chunk["text"]:
+        raise SystemExit(
+            f"chunk_missing_row_label={spec['chunk_id']}"
+        )
+
+    if spec["cell_value"] not in chunk["text"]:
+        raise SystemExit(
+            f"chunk_missing_cell_value={spec['chunk_id']}"
+        )
+
+    raw_unit = spec["raw_unit"]
+
+    if raw_unit == CNY_THOUSAND:
+        unit_multiplier = Decimal("1000")
+        unit_label = (
+            "\u4eba\u6c11\u5e01\u5343\u5143"
+        )
+    else:
+        unit_multiplier = Decimal("1")
+        unit_label = "\u4eba\u6c11\u5e01\u5143"
+
+    raw_value = Decimal(spec["raw_value"])
+    normalized_value = (
+        raw_value * unit_multiplier
+    )
+
+    evidence_text = "\uff5c".join(
+        [
+            spec["table_name"],
+            spec["row_label"],
+            spec["column_label"],
+            spec["cell_value"],
+            unit_label,
+        ]
+    )
+
+    evidence_record = {
+        "evidence_id": evidence_id,
+        "report_id": report_id,
+        "document_id": DOCUMENT_IDS[company_id],
+        "page_id": chunk["page_id"],
+        "chunk_id": spec["chunk_id"],
+        "evidence_type": (
+            "financial_statement_cell"
+        ),
+        "attribution_type": "report_disclosure",
+        "statement_type": spec["statement_type"],
+        "statement_scope": "consolidated",
+        "section_title": "\u8d22\u52a1\u62a5\u544a",
+        "table_name": spec["table_name"],
+        "row_label": spec["row_label"],
+        "column_label": spec["column_label"],
+        "printed_page": spec["printed_page"],
+        "pdf_page": spec["pdf_page"],
+        "evidence_text": evidence_text,
+        "cell_value": spec["cell_value"],
+        "source_hash": sha256(
+            evidence_text.encode("utf-8")
+        ).hexdigest(),
+        "validation_status": "pending",
+        "created_at": created_at,
+    }
+
+    fact_record = {
+        "fact_id": fact_id,
+        "company_id": company_id,
+        "report_id": report_id,
+        "metric_id": metric_id,
+        "fiscal_year": 2024,
+        "statement_type": spec["statement_type"],
+        "statement_scope": "consolidated",
+        "raw_value": str(raw_value),
+        "raw_unit": raw_unit,
+        "unit_multiplier": str(unit_multiplier),
+        "normalized_value": str(
+            normalized_value
+        ),
+        "normalized_unit": "CNY",
+        "currency": "CNY",
+        "table_name": spec["table_name"],
+        "row_label": spec["row_label"],
+        "column_label": spec["column_label"],
+        "is_comparative_value": False,
+        "restatement_status": "not_applicable",
+        "primary_evidence_id": evidence_id,
+        "validation_status": "pending",
+        "source_version": f"{report_id}_v1",
+        "created_at": created_at,
+        "updated_at": created_at,
+    }
+
+    if spec["statement_type"] == BS:
+        fact_record.update(
+            {
+                "period_type": "instant",
+                "as_of_date": "2024-12-31",
+            }
+        )
+    else:
+        fact_record.update(
+            {
+                "period_type": "duration",
+                "period_start": "2024-01-01",
+                "period_end": "2024-12-31",
+            }
+        )
+
+    link_record = {
+        "fact_id": fact_id,
+        "evidence_id": evidence_id,
+        "support_type": "primary",
+    }
+
+    SourceEvidence.model_validate(
+        evidence_record
+    )
+
+    FinancialFact.model_validate(
+        fact_record
+    )
+
+    FactEvidenceLink.model_validate(
+        link_record
+    )
+
+    new_evidences.append(evidence_record)
+    new_facts.append(fact_record)
+    new_links.append(link_record)
+
+
+target_evidence_ids = {
+    item["evidence_id"]
+    for item in new_evidences
+}
+
+target_fact_ids = {
+    item["fact_id"]
+    for item in new_facts
+}
+
+if len(target_evidence_ids) != 34:
+    raise SystemExit(
+        "new evidence_id is not unique"
+    )
+
+if len(target_fact_ids) != 34:
+    raise SystemExit(
+        "new fact_id is not unique"
+    )
+
+
+original_evidence_bytes = (
+    EVIDENCE_PATH.read_bytes()
+)
+
+original_fact_bytes = FACT_PATH.read_bytes()
+
+
+if not EVIDENCE_BACKUP.exists():
+    EVIDENCE_BACKUP.write_bytes(
+        original_evidence_bytes
+    )
+
+if not FACT_BACKUP.exists():
+    FACT_BACKUP.write_bytes(
+        original_fact_bytes
+    )
+
+
+evidence_data["evidences"].extend(
+    new_evidences
+)
+
+fact_data["financial_facts"].extend(
+    new_facts
+)
+
+fact_data["fact_evidence_links"].extend(
+    new_links
+)
+
+
+def dump_yaml(data):
+    return yaml.safe_dump(
+        data,
+        allow_unicode=True,
+        sort_keys=False,
+        width=1000,
+    )
+
+
+try:
+    EVIDENCE_PATH.write_text(
+        dump_yaml(evidence_data),
+        encoding="utf-8",
+    )
+
+    FACT_PATH.write_text(
+        dump_yaml(fact_data),
+        encoding="utf-8",
+    )
+
+    bundle, _, _, links = load_registry_bundle(
+        companies_path=COMPANY_PATH,
+        reports_path=REPORT_PATH,
+        metrics_path=METRIC_PATH,
+        evidences_path=EVIDENCE_PATH,
+        financial_facts_path=FACT_PATH,
+    )
+
+    bundle.validate_relationships()
+
+except Exception:
+    EVIDENCE_PATH.write_bytes(
+        original_evidence_bytes
+    )
+    FACT_PATH.write_bytes(
+        original_fact_bytes
+    )
+    raise
+
+
+pending_evidence_count = sum(
+    1
+    for evidence_id in target_evidence_ids
+    if (
+        bundle.evidences
+        .require(evidence_id)
+        .validation_status.value
+        == "pending"
+    )
+)
+
+pending_fact_count = sum(
+    1
+    for fact_id in target_fact_ids
+    if (
+        bundle.financial_facts
+        .require(fact_id)
+        .validation_status.value
+        == "pending"
+    )
+)
+
+
+print(f"new_evidence_count={len(new_evidences)}")
+print(f"new_fact_count={len(new_facts)}")
+print(f"new_link_count={len(new_links)}")
+print(f"pending_evidence_count={pending_evidence_count}")
+print(f"pending_fact_count={pending_fact_count}")
+print(f"total_evidence_count={len(bundle.evidences)}")
+print(
+    "total_financial_fact_count="
+    f"{len(bundle.financial_facts)}"
+)
+print(f"total_link_count={len(links)}")
+print("source_chunk_validation_passed=true")
+print("registry_relationship_validation_passed=true")
+print("complex_test_source_batch_written=true")
+'@ | uv run python -

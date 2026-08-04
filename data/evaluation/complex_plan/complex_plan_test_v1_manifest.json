@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "dataset_id": "complex_plan_test_v1",
+  "split": "test",
+  "status": "frozen",
+  "case_file": {
+    "path": "data/evaluation/complex_plan/complex_plan_test_v1.jsonl",
+    "sha256": "ea65ac71fd9cdee06db1c9eef0a733e061fd828869775a6b17f90231307c1049",
+    "case_count": 10,
+    "case_ids": [
+      "complex_021",
+      "complex_022",
+      "complex_023",
+      "complex_024",
+      "complex_025",
+      "complex_026",
+      "complex_027",
+      "complex_028",
+      "complex_029",
+      "complex_030"
+    ]
+  },
+  "calculation_file": {
+    "path": "data/evaluation/complex_plan/gold_calculations_test_v1.jsonl",
+    "sha256": "36217aa94b2da6792d41ac09db24999c12427d3913c59262c9cdb6500811228d",
+    "calculation_count": 7
+  },
+  "frozen_at": "2026-08-03T19:00:55.323943+08:00",
+  "frozen_by": "manual_review",
+  "evaluation_policy": {
+    "allow_post_test_query_tuning": false,
+    "allow_post_test_parameter_tuning": false,
+    "allow_post_test_gold_edit": false,
+    "failure_handling": "Record and classify failures; do not tune against Test results.",
+    "correction_policy": "Any genuine annotation correction must create a new version."
+  }
+}

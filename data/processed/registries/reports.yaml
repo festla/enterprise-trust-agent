@@ -1,0 +1,336 @@
+schema_version: 1
+
+reports:
+  - report_id: midea_group_2024
+    company_id: midea_group
+    fiscal_year: 2024
+    report_type: annual_report
+    title: "美的集团：2024年年度报告"
+    publication_date: 2025-03-29
+    source_name: "同花顺公司财报入口"
+    quality_grade: A
+    citation_risk: low
+    expected_pdf_page_count: 295
+    status: active
+    notes: "文件名：midea_2024_annual_report.pdf；文本型 PDF，共 295 页；三大报表完整；PDF 页码较报告印刷页码固定偏移 1 页。"
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - report_id: midea_group_2025
+    company_id: midea_group
+    fiscal_year: 2025
+    report_type: annual_report
+    title: "美的集团：2025年年度报告"
+    publication_date: 2026-03-31
+    source_name: "同花顺公司财报入口"
+    quality_grade: A
+    citation_risk: low
+    expected_pdf_page_count: 276
+    status: active
+    notes: "文件名：midea_2025_annual_report.pdf；文本型 PDF，共 276 页；三大报表完整；PDF 页码较报告印刷页码固定偏移 1 页。"
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - report_id: gree_electric_2024
+    company_id: gree_electric
+    fiscal_year: 2024
+    report_type: annual_report
+    title: "格力电器：2024年年度报告"
+    publication_date: 2025-04-28
+    source_name: "同花顺公司财报入口"
+    quality_grade: A
+    citation_risk: info
+    expected_pdf_page_count: 248
+    status: active
+    notes: "文件名：gree_2024_annual_report.pdf；文本型 PDF，共 248 页；三大报表完整；PDF 页码与报告印刷页码一致。"
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - report_id: gree_electric_2025
+    company_id: gree_electric
+    fiscal_year: 2025
+    report_type: annual_report
+    title: "格力电器：2025年年度报告"
+    publication_date: 2026-04-29
+    source_name: "同花顺公司财报入口"
+    quality_grade: A
+    citation_risk: low
+    expected_pdf_page_count: 219
+    status: active
+    notes: "文件名：gree_2025_annual_report.pdf；文本型 PDF，共 219 页；三大报表完整；PDF 页码较报告印刷页码固定偏移 1 页。"
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - report_id: haier_smart_home_2024
+    company_id: haier_smart_home
+    fiscal_year: 2024
+    report_type: annual_report
+    title: "海尔智家：海尔智家股份有限公司2024年年度报告"
+    publication_date: 2025-03-28
+    source_name: "同花顺公司财报入口"
+    quality_grade: A
+    citation_risk: info
+    expected_pdf_page_count: 247
+    status: active
+    notes: "文件名：haier_smart_home_2024_annual_report.pdf；文本型 PDF，共 247 页；三大报表完整；PDF 页码与报告印刷页码一致。"
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - report_id: haier_smart_home_2025
+    company_id: haier_smart_home
+    fiscal_year: 2025
+    report_type: annual_report
+    title: "海尔智家：海尔智家股份有限公司2025年年度报告"
+    publication_date: 2026-03-27
+    source_name: "同花顺公司财报入口"
+    quality_grade: A
+    citation_risk: info
+    expected_pdf_page_count: 245
+    status: active
+    notes: "文件名：haier_smart_home_2025_annual_report.pdf；文本型 PDF，共 245 页；三大报表完整；PDF 页码与报告印刷页码一致。"
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - report_id: hisense_home_2024
+    company_id: hisense_home
+    fiscal_year: 2024
+    report_type: annual_report
+    title: "海信家电：2024年年度报告"
+    publication_date: 2025-03-29
+    source_name: "同花顺公司财报入口"
+    quality_grade: A
+    citation_risk: medium
+    expected_pdf_page_count: 243
+    status: active
+    notes: "文件名：hisense_home_2024_annual_report.pdf；文本型 PDF，共 243 页；三大报表完整；存在两个印刷页码 33，导致其后 PDF 页码偏移量由 1 变为 2；封面含扫描文字但不影响正文使用；业务分部情况待后续核验。"
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - report_id: hisense_home_2025
+    company_id: hisense_home
+    fiscal_year: 2025
+    report_type: annual_report
+    title: "海信家电：2025年年度报告"
+    publication_date: 2026-03-31
+    source_name: "同花顺公司财报入口"
+    quality_grade: A
+    citation_risk: low
+    expected_pdf_page_count: 221
+    status: active
+    notes: "文件名：hisense_home_2025_annual_report.pdf；文本型 PDF，共 221 页；三大报表完整；PDF 页码较报告印刷页码固定偏移 1 页；封面含扫描文字但不影响正文使用；业务分部情况待后续核验。"
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - report_id: robam_2024
+    company_id: robam
+    fiscal_year: 2024
+    report_type: annual_report
+    title: "老板电器：2024年年度报告"
+    publication_date: 2025-04-29
+    source_name: "同花顺公司财报入口"
+    quality_grade: A
+    citation_risk: info
+    expected_pdf_page_count: 169
+    status: active
+    notes: "文件名：robam_2024_annual_report.pdf；文本型 PDF，共 169 页；三大报表完整；PDF 页码与报告印刷页码一致。"
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - report_id: robam_2025
+    company_id: robam
+    fiscal_year: 2025
+    report_type: annual_report
+    title: "老板电器：2025年年度报告"
+    publication_date: 2026-04-29
+    source_name: "同花顺公司财报入口"
+    quality_grade: A
+    citation_risk: info
+    expected_pdf_page_count: 162
+    status: active
+    notes: "文件名：robam_2025_annual_report.pdf；文本型 PDF，共 162 页；三大报表完整；PDF 页码与报告印刷页码一致。"
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - report_id: supor_2024
+    company_id: supor
+    fiscal_year: 2024
+    report_type: annual_report
+    title: "苏 泊 尔：2024年年度报告"
+    publication_date: 2025-03-28
+    source_name: "同花顺公司财报入口"
+    quality_grade: A
+    citation_risk: low
+    expected_pdf_page_count: 174
+    status: active
+    notes: "文件名：supor_2024_annual_report.pdf；文本型 PDF，共 174 页；三大报表完整；PDF 页码与报告印刷页码一致；首页文字无法复制且没有页码下标，但按印刷第 1 页处理。"
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - report_id: supor_2025
+    company_id: supor
+    fiscal_year: 2025
+    report_type: annual_report
+    title: "苏 泊 尔：2025年年度报告"
+    publication_date: 2026-04-03
+    source_name: "同花顺公司财报入口"
+    quality_grade: A
+    citation_risk: low
+    expected_pdf_page_count: 162
+    status: active
+    notes: "文件名：supor_2025_annual_report.pdf；文本型 PDF，共 162 页；三大报表完整；PDF 页码与报告印刷页码一致；首页文字无法复制且没有页码下标，但按印刷第 1 页处理。"
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+page_mappings:
+  - mapping_id: midea_group_2024_main
+    report_id: midea_group_2024
+    printed_page_start: 1
+    printed_page_end: 294
+    pdf_page_start: 2
+    pdf_page_end: 295
+    offset: 1
+    rule_type: offset
+    notes: "PDF 第 1 页为封面，印刷第 1 页对应 PDF 第 2 页。"
+    validation_status: verified
+
+  - mapping_id: midea_group_2025_main
+    report_id: midea_group_2025
+    printed_page_start: 1
+    printed_page_end: 275
+    pdf_page_start: 2
+    pdf_page_end: 276
+    offset: 1
+    rule_type: offset
+    notes: "PDF 第 1 页为封面，印刷第 1 页对应 PDF 第 2 页。"
+    validation_status: verified
+
+  - mapping_id: gree_electric_2024_main
+    report_id: gree_electric_2024
+    printed_page_start: 1
+    printed_page_end: 248
+    pdf_page_start: 1
+    pdf_page_end: 248
+    offset: 0
+    rule_type: identity
+    notes: "PDF 页码与报告印刷页码完全一致。"
+    validation_status: verified
+
+  - mapping_id: gree_electric_2025_main
+    report_id: gree_electric_2025
+    printed_page_start: 1
+    printed_page_end: 218
+    pdf_page_start: 2
+    pdf_page_end: 219
+    offset: 1
+    rule_type: offset
+    notes: "PDF 第 1 页为封面，印刷第 1 页对应 PDF 第 2 页。"
+    validation_status: verified
+
+  - mapping_id: haier_smart_home_2024_main
+    report_id: haier_smart_home_2024
+    printed_page_start: 1
+    printed_page_end: 247
+    pdf_page_start: 1
+    pdf_page_end: 247
+    offset: 0
+    rule_type: identity
+    notes: "PDF 页码与报告印刷页码完全一致。"
+    validation_status: verified
+
+  - mapping_id: haier_smart_home_2025_main
+    report_id: haier_smart_home_2025
+    printed_page_start: 1
+    printed_page_end: 245
+    pdf_page_start: 1
+    pdf_page_end: 245
+    offset: 0
+    rule_type: identity
+    notes: "PDF 页码与报告印刷页码完全一致。"
+    validation_status: verified
+
+  - mapping_id: hisense_home_2024_before_duplicate_33
+    report_id: hisense_home_2024
+    printed_page_start: 1
+    printed_page_end: 33
+    pdf_page_start: 2
+    pdf_page_end: 34
+    offset: 1
+    rule_type: offset
+    notes: "印刷第 1 至 33 页对应 PDF 第 2 至 34 页。"
+    validation_status: verified
+
+  - mapping_id: hisense_home_2024_duplicate_33
+    report_id: hisense_home_2024
+    printed_page_start: 33
+    printed_page_end: 33
+    pdf_page_start: 35
+    pdf_page_end: 35
+    rule_type: custom
+    notes: "报告存在第二个印刷页码 33，该重复页对应 PDF 第 35 页。"
+    validation_status: verified
+
+  - mapping_id: hisense_home_2024_after_duplicate_33
+    report_id: hisense_home_2024
+    printed_page_start: 34
+    printed_page_end: 241
+    pdf_page_start: 36
+    pdf_page_end: 243
+    offset: 2
+    rule_type: offset
+    notes: "重复页码 33 之后，PDF 页码比报告印刷页码大 2。"
+    validation_status: verified
+
+  - mapping_id: hisense_home_2025_main
+    report_id: hisense_home_2025
+    printed_page_start: 1
+    printed_page_end: 220
+    pdf_page_start: 2
+    pdf_page_end: 221
+    offset: 1
+    rule_type: offset
+    notes: "PDF 第 1 页为封面，印刷第 1 页对应 PDF 第 2 页。"
+    validation_status: verified
+
+  - mapping_id: robam_2024_main
+    report_id: robam_2024
+    printed_page_start: 1
+    printed_page_end: 169
+    pdf_page_start: 1
+    pdf_page_end: 169
+    offset: 0
+    rule_type: identity
+    notes: "PDF 页码与报告印刷页码完全一致。"
+    validation_status: verified
+
+  - mapping_id: robam_2025_main
+    report_id: robam_2025
+    printed_page_start: 1
+    printed_page_end: 162
+    pdf_page_start: 1
+    pdf_page_end: 162
+    offset: 0
+    rule_type: identity
+    notes: "PDF 页码与报告印刷页码完全一致。"
+    validation_status: verified
+
+  - mapping_id: supor_2024_main
+    report_id: supor_2024
+    printed_page_start: 1
+    printed_page_end: 174
+    pdf_page_start: 1
+    pdf_page_end: 174
+    offset: 0
+    rule_type: identity
+    notes: "首页没有印刷页码下标，但按印刷第 1 页处理；其余 PDF 页码与印刷页码一致。"
+    validation_status: verified
+
+  - mapping_id: supor_2025_main
+    report_id: supor_2025
+    printed_page_start: 1
+    printed_page_end: 162
+    pdf_page_start: 1
+    pdf_page_end: 162
+    offset: 0
+    rule_type: identity
+    notes: "首页没有印刷页码下标，但按印刷第 1 页处理；其余 PDF 页码与印刷页码一致。"
+    validation_status: verified

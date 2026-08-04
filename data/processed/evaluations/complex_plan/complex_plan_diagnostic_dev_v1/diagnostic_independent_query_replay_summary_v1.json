@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "experiment_id": "complex_diagnostic_dev_v1_independent_query_replay_v1",
+  "experiment_role": "remove_case_short_circuit_bias",
+  "uses_frozen_test_configuration": true,
+  "parameter_retuning_during_run": false,
+  "query_specific_rules_used": false,
+  "gold_fact_ids_available_to_runtime": false,
+  "gold_evidence_ids_available_to_runtime": false,
+  "gold_pdf_pages_available_to_runtime": false,
+  "case_dataset": "data/evaluation/complex_plan/complex_plan_diagnostic_dev_v1.jsonl",
+  "case_dataset_sha256": "79554c2312b2ff45d54e204dad0a4317c596853df1a517736bfc5c71821148e0",
+  "diagnostic_manifest": "data/evaluation/complex_plan/complex_plan_diagnostic_dev_v1_manifest.json",
+  "diagnostic_manifest_sha256": "b01fa76dada161b63691b3d77845824e24750cbd977d5708ed97547e69cdc774",
+  "frozen_config": "data/processed/evaluations/complex_plan/complex_plan_dev_v2/context_budget_frozen_config_v1.json",
+  "frozen_config_sha256": "7f3e01397ca833438b8ef3947e812711e9a2ae50b88efef9f1612c835539a1a3",
+  "run_started_at": "2026-08-03T14:31:53.955264+00:00",
+  "run_completed_at": "2026-08-03T14:36:00.690961+00:00",
+  "all_queries": {
+    "query_count": 24,
+    "runtime_completed_count": 24,
+    "target_fact_hit_count": 9,
+    "target_fact_hit_rate": 0.375,
+    "base_target_hit_count": 7,
+    "expansion_recovered_count": 2,
+    "target_support_in_full_count": 13,
+    "target_support_in_selected_count": 9,
+    "diagnosis_counts": {
+      "base_resolved": 7,
+      "budget_selection_miss": 4,
+      "expansion_recovered": 2,
+      "retrieval_or_page_window_coverage_gap": 3,
+      "same_page_chunk_coverage_gap": 8
+    }
+  },
+  "diagnostic_targets": {
+    "query_count": 8,
+    "runtime_completed_count": 8,
+    "target_fact_hit_count": 4,
+    "target_fact_hit_rate": 0.5,
+    "base_target_hit_count": 3,
+    "expansion_recovered_count": 1,
+    "target_support_in_full_count": 5,
+    "target_support_in_selected_count": 4,
+    "diagnosis_counts": {
+      "base_resolved": 3,
+      "budget_selection_miss": 1,
+      "expansion_recovered": 1,
+      "same_page_chunk_coverage_gap": 3
+    }
+  },
+  "controls": {
+    "query_count": 16,
+    "runtime_completed_count": 16,
+    "target_fact_hit_count": 5,
+    "target_fact_hit_rate": 0.3125,
+    "base_target_hit_count": 4,
+    "expansion_recovered_count": 1,
+    "target_support_in_full_count": 8,
+    "target_support_in_selected_count": 5,
+    "diagnosis_counts": {
+      "base_resolved": 4,
+      "budget_selection_miss": 3,
+      "expansion_recovered": 1,
+      "retrieval_or_page_window_coverage_gap": 3,
+      "same_page_chunk_coverage_gap": 5
+    }
+  },
+  "diagnostic_categories": {
+    "adjacent_page_continued_table": {
+      "query_count": 2,
+      "runtime_completed_count": 2,
+      "target_fact_hit_count": 2,
+      "target_fact_hit_rate": 1.0,
+      "base_target_hit_count": 1,
+      "expansion_recovered_count": 1,
+      "target_support_in_full_count": 2,
+      "target_support_in_selected_count": 2,
+      "diagnosis_counts": {
+        "base_resolved": 1,
+        "expansion_recovered": 1
+      }
+    },
+    "confusable_labels": {
+      "query_count": 1,
+      "runtime_completed_count": 1,
+      "target_fact_hit_count": 0,
+      "target_fact_hit_rate": 0.0,
+      "base_target_hit_count": 0,
+      "expansion_recovered_count": 0,
+      "target_support_in_full_count": 0,
+      "target_support_in_selected_count": 0,
+      "diagnosis_counts": {
+        "same_page_chunk_coverage_gap": 1
+      }
+    },
+    "confusable_labels_and_adjacent_page": {
+      "query_count": 1,
+      "runtime_completed_count": 1,
+      "target_fact_hit_count": 1,
+      "target_fact_hit_rate": 1.0,
+      "base_target_hit_count": 1,
+      "expansion_recovered_count": 0,
+      "target_support_in_full_count": 1,
+      "target_support_in_selected_count": 1,
+      "diagnosis_counts": {
+        "base_resolved": 1
+      }
+    },
+    "multi_fact_structural_retrieval": {
+      "query_count": 1,
+      "runtime_completed_count": 1,
+      "target_fact_hit_count": 0,
+      "target_fact_hit_rate": 0.0,
+      "base_target_hit_count": 0,
+      "expansion_recovered_count": 0,
+      "target_support_in_full_count": 0,
+      "target_support_in_selected_count": 0,
+      "diagnosis_counts": {
+        "same_page_chunk_coverage_gap": 1
+      }
+    },
+    "page_window_coverage_gap": {
+      "query_count": 1,
+      "runtime_completed_count": 1,
+      "target_fact_hit_count": 1,
+      "target_fact_hit_rate": 1.0,
+      "base_target_hit_count": 1,
+      "expansion_recovered_count": 0,
+      "target_support_in_full_count": 1,
+      "target_support_in_selected_count": 1,
+      "diagnosis_counts": {
+        "base_resolved": 1
+      }
+    },
+    "same_page_sibling": {
+      "query_count": 2,
+      "runtime_completed_count": 2,
+      "target_fact_hit_count": 0,
+      "target_fact_hit_rate": 0.0,
+      "base_target_hit_count": 0,
+      "expansion_recovered_count": 0,
+      "target_support_in_full_count": 1,
+      "target_support_in_selected_count": 0,
+      "diagnosis_counts": {
+        "budget_selection_miss": 1,
+        "same_page_chunk_coverage_gap": 1
+      }
+    }
+  },
+  "replay_path": "data/processed/evaluations/complex_plan/complex_plan_diagnostic_dev_v1/diagnostic_independent_query_replay_v1.jsonl",
+  "replay_sha256": "b5ea46de9c12a5df2ee46080edc186cc3692c6d23611d7f972ee40d6e207f07a"
+}

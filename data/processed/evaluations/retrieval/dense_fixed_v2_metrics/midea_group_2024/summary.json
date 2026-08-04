@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "evaluation_set_id": "financial_fact_retrieval_dev_v1_midea_group_2024_dense_fixed",
+  "strategy": "fixed_length",
+  "retriever_type": "dense",
+  "chunk_dataset_id": "chunk_dataset_midea_group_2024_d27f3c7919cfba40f995b86a",
+  "index_id": "vector_index_midea_group_2024_866466bf6366ad4e6dc50dc9",
+  "case_ids": [
+    "fact_001",
+    "fact_003",
+    "smoke_midea_2024_cash",
+    "smoke_midea_2024_mainland_external_revenue",
+    "smoke_midea_2024_ocf",
+    "smoke_midea_2024_operating_cost",
+    "smoke_midea_2024_parent_net_profit",
+    "smoke_midea_2024_total_assets"
+  ],
+  "case_count": 8,
+  "hit_at_1_count": 4,
+  "hit_at_3_count": 6,
+  "hit_at_5_count": 7,
+  "recall_at_1": 0.5,
+  "recall_at_3": 0.75,
+  "recall_at_5": 0.875,
+  "mrr": 0.6430555555555555,
+  "ndcg_at_1": 0.5,
+  "ndcg_at_3": 0.6413662191964322,
+  "ndcg_at_5": 0.6897228201007499
+}

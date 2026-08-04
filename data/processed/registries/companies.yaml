@@ -1,0 +1,62 @@
+schema_version: 1
+
+companies:
+  - company_id: midea_group
+    legal_name_cn: 美的集团股份有限公司
+    short_name_cn: 美的集团
+    stock_code: "000333"
+    exchange: SZSE
+    industry: 家用电器
+    status: active
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - company_id: gree_electric
+    legal_name_cn: 珠海格力电器股份有限公司
+    short_name_cn: 格力电器
+    stock_code: "000651"
+    exchange: SZSE
+    industry: 家用电器
+    status: active
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - company_id: haier_smart_home
+    legal_name_cn: 海尔智家股份有限公司
+    short_name_cn: 海尔智家
+    stock_code: "600690"
+    exchange: SSE
+    industry: 家用电器
+    status: active
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - company_id: hisense_home
+    legal_name_cn: 海信家电集团股份有限公司
+    short_name_cn: 海信家电
+    stock_code: "000921"
+    exchange: SZSE
+    industry: 家用电器
+    status: active
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - company_id: robam
+    legal_name_cn: 杭州老板电器股份有限公司
+    short_name_cn: 老板电器
+    stock_code: "002508"
+    exchange: SZSE
+    industry: 家用电器
+    status: active
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00
+
+  - company_id: supor
+    legal_name_cn: 浙江苏泊尔股份有限公司
+    short_name_cn: 苏泊尔
+    stock_code: "002032"
+    exchange: SZSE
+    industry: 家用电器
+    status: active
+    created_at: 2026-07-24T00:00:00+08:00
+    updated_at: 2026-07-24T00:00:00+08:00

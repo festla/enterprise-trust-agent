@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "config_id": "context_budget_frozen_config_v2",
+  "status": "frozen_before_test",
+  "frozen_at": "2026-08-04T02:30:26.079242+00:00",
+  "parent_config": {
+    "path": "data/processed/evaluations/complex_plan/complex_plan_dev_v2/context_budget_frozen_config_v1.json",
+    "sha256": "7f3e01397ca833438b8ef3947e812711e9a2ae50b88efef9f1612c835539a1a3"
+  },
+  "dev_acceptance": {
+    "acceptance_passed": true,
+    "query_count": 24,
+    "baseline_hit_count": 9,
+    "selected_hit_count": 18,
+    "selected_hit_rate": 0.75,
+    "diagnostic_query_count": 8,
+    "diagnostic_hit_count": 8,
+    "control_query_count": 16,
+    "control_hit_count": 10,
+    "recovered_query_count": 9,
+    "regressed_query_count": 0,
+    "runtime_confirmation": {
+      "query_count": 24,
+      "target_hit_count": 18,
+      "diagnostic_target_hit_count": 8,
+      "runtime_error_count": 0
+    }
+  },
+  "frozen_from": {
+    "diagnostic_dataset_path": "data/evaluation/complex_plan/complex_plan_diagnostic_dev_v1.jsonl",
+    "diagnostic_dataset_sha256": "79554c2312b2ff45d54e204dad0a4317c596853df1a517736bfc5c71821148e0",
+    "diagnostic_manifest_path": "data/evaluation/complex_plan/complex_plan_diagnostic_dev_v1_manifest.json",
+    "diagnostic_manifest_sha256": "b01fa76dada161b63691b3d77845824e24750cbd977d5708ed97547e69cdc774",
+    "metric_aware_summary_path": "data/processed/evaluations/complex_plan/complex_plan_diagnostic_dev_v1/metric_aware_same_page_ranking_summary_v3.json",
+    "metric_aware_summary_sha256": "3cb1fde1ed4fe20742d6a9ef6eaadd609aaacdd44fae7bf667ef153eeabbc8e6",
+    "runtime_source_sha256": {
+      "app/schemas/context_expansion.py": "23d730ca3b5036408a6bbe93e6ada6948ffffd9e37783d8811f1a3d7ba34f156",
+      "app/schemas/context_budget.py": "40680b38857c4e441e227002fc4ee7e0bd9be70fcd36752a86c050535530ceee",
+      "app/services/context_expansion.py": "b905742235aab740dabd19d9f6c7a91cd62ed7605cd28c36f194ab194fcbea6c",
+      "app/services/context_budgeting.py": "0098dc580397cc0133ed829fddada111e1f87e31c57f9d5d9d4c1e2980a659fb",
+      "app/services/context_fact_resolver.py": "970aa29a7fc1110d67a541d12c2db20070dffbc15384ccf3f6be9d8e964e77ab",
+      "app/services/budgeted_context_oracle_retrieval_adapter.py": "26cea66d911f1037ce4ff455e5fda1a3c34d9498bf9093835953623381c1f1fd"
+    }
+  },
+  "frozen_parameters": {
+    "base_retrieval": {
+      "base_top_k": 5,
+      "bm25_candidate_count": 50,
+      "dense_candidate_count": 50,
+      "embedding_model_name": "BAAI/bge-small-zh-v1.5",
+      "embedding_model_revision": "534b6bfaaf500e70bcb9f3771cebc940c23b219d",
+      "rank_constant": 60,
+      "rerank_candidate_count": 50,
+      "reranker_model_name": "BAAI/bge-reranker-base",
+      "reranker_model_revision": "2cfc18c9415c912f9d8155881c133215df768a70",
+      "retriever_type": "hybrid_rrf_reranker"
+    },
+    "context_candidate_generation": {
+      "page_window": 1,
+      "strategy_id": "same_and_adjacent_page_context_v2"
+    },
+    "context_selection": {
+      "expand_only_when_base_unresolved": true,
+      "lexical_score_version": "metric_name_query_bigram_v1",
+      "max_expanded_chars": 1600,
+      "max_expanded_items": 2,
+      "policy_id": "gated_metric_aware_context_budget_v2"
+    },
+    "fact_resolution": {
+      "requires_verified_evidence": true,
+      "requires_verified_fact": true,
+      "resolver_version": "registry_context_fact_resolver_v1"
+    }
+  },
+  "frozen_parameter_sha256": "d9f2c439b4fe9a13c9ed5763ec62c7ec1f8f27306c029d713efa07920e669e99",
+  "test_protocol": {
+    "failure_handling": "record_and_classify_without_retuning_frozen_parameters",
+    "gold_evidence_ids_available_to_runtime": false,
+    "gold_fact_ids_available_to_runtime": false,
+    "gold_pdf_pages_available_to_runtime": false,
+    "parameter_retuning_allowed": false,
+    "query_specific_rules_allowed": false,
+    "required_new_version_after_change": true,
+    "target_case_ids": [
+      "complex_021",
+      "complex_022",
+      "complex_023",
+      "complex_024",
+      "complex_025",
+      "complex_026",
+      "complex_027",
+      "complex_028",
+      "complex_029",
+      "complex_030"
+    ]
+  }
+}

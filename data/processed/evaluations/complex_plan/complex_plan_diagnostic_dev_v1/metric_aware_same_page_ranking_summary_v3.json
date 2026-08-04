@@ -1,0 +1,82 @@
+{
+  "schema_version": "metric_aware_ranking_simulation_summary_v3",
+  "experiment_type": "pre_implementation_candidate_ranking_comparison",
+  "query_count": 24,
+  "baseline_hit_count": 9,
+  "candidate_generation_strategy": "adjacent_page_plus_same_page_sibling_v2",
+  "ranking_gold_information_used": false,
+  "ranking_runtime_fields": [
+    "query.metric_id",
+    "metric.display_name_cn",
+    "metric_alias.alias",
+    "query.semantic_query",
+    "candidate.text",
+    "anchor_retrieval_rank"
+  ],
+  "base_retrieval_changed": false,
+  "resolver_changed": false,
+  "context_budget_changed": false,
+  "max_expanded_items": 2,
+  "max_expanded_chars": 1600,
+  "strategies": {
+    "current_lexical_v1": {
+      "query_count": 24,
+      "hit_count": 9,
+      "hit_rate": 0.375,
+      "recovered_query_count": 0,
+      "regressed_query_count": 0,
+      "outcome_counts": {
+        "adjacent_page_recovered": 2,
+        "base_resolved": 7,
+        "budget_selection_miss": 12,
+        "candidate_generation_coverage_gap": 3
+      },
+      "diagnostic_query_count": 8,
+      "diagnostic_hit_count": 4,
+      "diagnostic_hit_rate": 0.5,
+      "control_query_count": 16,
+      "control_hit_count": 5,
+      "control_hit_rate": 0.3125
+    },
+    "bigram_first_v1": {
+      "query_count": 24,
+      "hit_count": 15,
+      "hit_rate": 0.625,
+      "recovered_query_count": 6,
+      "regressed_query_count": 0,
+      "outcome_counts": {
+        "adjacent_page_recovered": 3,
+        "base_resolved": 7,
+        "budget_selection_miss": 6,
+        "candidate_generation_coverage_gap": 3,
+        "same_page_sibling_recovered": 5
+      },
+      "diagnostic_query_count": 8,
+      "diagnostic_hit_count": 7,
+      "diagnostic_hit_rate": 0.875,
+      "control_query_count": 16,
+      "control_hit_count": 8,
+      "control_hit_rate": 0.5
+    },
+    "metric_aware_v1": {
+      "query_count": 24,
+      "hit_count": 18,
+      "hit_rate": 0.75,
+      "recovered_query_count": 9,
+      "regressed_query_count": 0,
+      "outcome_counts": {
+        "adjacent_page_recovered": 3,
+        "base_resolved": 7,
+        "budget_selection_miss": 3,
+        "candidate_generation_coverage_gap": 3,
+        "same_page_sibling_recovered": 8
+      },
+      "diagnostic_query_count": 8,
+      "diagnostic_hit_count": 8,
+      "diagnostic_hit_rate": 1.0,
+      "control_query_count": 16,
+      "control_hit_count": 10,
+      "control_hit_rate": 0.625
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "config_id": "context_budget_frozen_config_v1",
+  "dev_acceptance": {
+    "acceptance_passed": true,
+    "base_resolved_query_count": 62,
+    "case_count": 20,
+    "completed_count": 20,
+    "context_char_growth_ratio": 0.025543686771803,
+    "expansion_recovered_query_count": 4,
+    "expansion_required_query_count": 4,
+    "planned_query_count": 66,
+    "resolved_query_count": 66,
+    "selected_expanded_chars": 6325,
+    "selected_expanded_items": 8
+  },
+  "frozen_at": "2026-08-03T07:13:57.084320+00:00",
+  "frozen_from": {
+    "budgeted_summary_path": "data\\processed\\evaluations\\complex_plan\\complex_plan_dev_v2\\context_budget_summary_top5_budgeted_adjacent_page_context_v1.json",
+    "budgeted_summary_sha256": "f8eab64ab60e662a2a4f14cd610dd5a7a90af7c4e4337d80a820c4cb0cd83f00",
+    "comparison_path": "data\\processed\\evaluations\\complex_plan\\complex_plan_dev_v2\\context_strategy_comparison_v1.json",
+    "dataset_path": "data\\evaluation\\complex_plan\\complex_plan_dev_v2.jsonl",
+    "dataset_sha256": "a56300c499ca4deaffd071fb7caa44104effec81232a549ec68beedb607ed2ab"
+  },
+  "frozen_parameter_sha256": "2d6df19d6520c9a6ca8d04d69b6939001a8fbc97f809fde999d84a7d8b41524a",
+  "frozen_parameters": {
+    "base_retrieval": {
+      "base_top_k": 5,
+      "bm25_candidate_count": 50,
+      "dense_candidate_count": 50,
+      "embedding_model_name": "BAAI/bge-small-zh-v1.5",
+      "embedding_model_revision": "534b6bfaaf500e70bcb9f3771cebc940c23b219d",
+      "rank_constant": 60,
+      "rerank_candidate_count": 50,
+      "reranker_model_name": "BAAI/bge-reranker-base",
+      "reranker_model_revision": "2cfc18c9415c912f9d8155881c133215df768a70",
+      "retriever_type": "hybrid_rrf_reranker"
+    },
+    "context_candidate_generation": {
+      "page_window": 1,
+      "strategy_id": "adjacent_page_context_v1"
+    },
+    "context_selection": {
+      "expand_only_when_base_unresolved": true,
+      "lexical_score_version": "query_token_bigram_v1",
+      "max_expanded_chars": 1600,
+      "max_expanded_items": 2,
+      "policy_id": "gated_lexical_adjacent_budget_v1"
+    },
+    "fact_resolution": {
+      "requires_verified_evidence": true,
+      "requires_verified_fact": true,
+      "resolver_version": "registry_context_fact_resolver_v1"
+    }
+  },
+  "schema_version": 1,
+  "status": "frozen_before_test",
+  "test_protocol": {
+    "failure_handling": "record_and_classify_without_retuning_frozen_parameters",
+    "gold_evidence_ids_available_to_runtime": false,
+    "gold_fact_ids_available_to_runtime": false,
+    "gold_pdf_pages_available_to_runtime": false,
+    "parameter_retuning_allowed": false,
+    "query_specific_rules_allowed": false,
+    "required_new_version_after_change": true,
+    "target_case_ids": [
+      "complex_021",
+      "complex_022",
+      "complex_023",
+      "complex_024",
+      "complex_025",
+      "complex_026",
+      "complex_027",
+      "complex_028",
+      "complex_029",
+      "complex_030"
+    ]
+  }
+}

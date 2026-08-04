@@ -1,0 +1,44 @@
+{
+  "bm25_index_id": "bm25_index_haier_smart_home_2024_c11b15025cb81be6a4fe8d41",
+  "chunk_dataset_id": "chunk_dataset_haier_smart_home_2024_6aa9f9aaff9d79d873269575",
+  "dense_index_created": false,
+  "dense_index_id": "vector_index_haier_smart_home_2024_97c2a90a281521f0ba84c7ec",
+  "embedding_spec": {
+    "dimension": 512,
+    "document_prefix": "",
+    "dtype": "float32",
+    "max_sequence_length": 512,
+    "model_name": "BAAI/bge-small-zh-v1.5",
+    "model_version": "534b6bfaaf500e70bcb9f3771cebc940c23b219d",
+    "normalize_embeddings": true,
+    "provider": "sentence_transformers",
+    "query_prefix": "为这个句子生成表示以用于检索相关文章：",
+    "schema_version": 1
+  },
+  "evaluation_set_id": "retrieval_benchmark_v1_haier_smart_home_2024",
+  "hybrid_evaluation_top_k": 100,
+  "hybrid_run_id": "hybrid_run_haier_smart_home_2024_2c20583bad221a4404d479c1",
+  "report_id": "haier_smart_home_2024",
+  "retriever_type": "hybrid_rrf",
+  "rrf_config": {
+    "bm25_candidate_count": 50,
+    "dense_candidate_count": 50,
+    "fusion_method": "reciprocal_rank_fusion",
+    "fusion_version": "rrf_v1",
+    "rank_constant": 60,
+    "schema_version": 1
+  },
+  "schema_version": 1,
+  "tokenizer_spec": {
+    "ascii_token_rule": "contiguous_alnum",
+    "boundary_rule": "non_cjk_non_ascii_alnum",
+    "cjk_ngram_size": 2,
+    "cjk_token_rule": "character_ngram",
+    "lowercase_ascii": true,
+    "schema_version": 1,
+    "single_cjk_fallback": "keep_single_character",
+    "tokenizer_name": "deterministic_chinese_bigram",
+    "tokenizer_version": "deterministic_chinese_bigram_v1",
+    "unicode_normalization": "NFKC"
+  }
+}

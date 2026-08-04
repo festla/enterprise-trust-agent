@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.codemap
+.VSCodeCounter
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Test and tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets
+.env
+.env.*
+!.env.example
+secrets/
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# Logs
+logs/
+*.log
+
+# Local databases and checkpoints
+*.db
+*.sqlite
+*.sqlite3
+checkpoint.db
+
+# Model and package caches
+.cache/
+models/
+model_cache/
+
+# Raw annual reports
+data/raw_reports/**/**/*.pdf
+
+# Generated datasets and indices
+data/processed/pages/
+data/processed/chunks/
+data/processed/indices/
+
+
+# Temporary experiment artifacts
+tmp/
+temp/
+outputs/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/

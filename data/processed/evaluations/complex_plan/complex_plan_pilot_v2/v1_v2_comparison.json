@@ -1,0 +1,141 @@
+{
+  "schema_version": 2,
+  "comparison_id": "complex_plan_pilot_v1_vs_v2",
+  "dataset_role": "pilot_dev",
+  "is_held_out_test": false,
+  "v1_result_path": "data\\processed\\evaluations\\complex_plan\\complex_plan_pilot_v1\\gold_oracle_hybrid_reranker_v1.jsonl",
+  "v2_result_path": "data\\processed\\evaluations\\complex_plan\\complex_plan_pilot_v2\\gold_oracle_hybrid_reranker_v2.jsonl",
+  "v1_summary": {
+    "case_count": 4,
+    "completed_count": 3,
+    "failed_count": 1,
+    "refused_count": 0,
+    "answer_count": 3,
+    "planned_query_count": 10,
+    "executed_query_count": 8,
+    "resolved_query_count": 7,
+    "calculation_trace_count": 1,
+    "end_to_end_completion_rate": 0.75,
+    "execution_coverage_rate": 0.8,
+    "planned_query_resolution_rate": 0.7,
+    "executed_query_resolution_rate": 0.875,
+    "failure_stage_counts": {
+      "retrieval": 1
+    }
+  },
+  "v2_summary": {
+    "case_count": 4,
+    "completed_count": 4,
+    "failed_count": 0,
+    "refused_count": 0,
+    "answer_count": 4,
+    "planned_query_count": 10,
+    "executed_query_count": 10,
+    "resolved_query_count": 10,
+    "calculation_trace_count": 1,
+    "end_to_end_completion_rate": 1.0,
+    "execution_coverage_rate": 1.0,
+    "planned_query_resolution_rate": 1.0,
+    "executed_query_resolution_rate": 1.0,
+    "failure_stage_counts": {}
+  },
+  "completion_rate_delta": 0.25,
+  "planned_query_resolution_rate_delta": 0.30000000000000004,
+  "rewrite_changes": [
+    {
+      "case_id": "complex_004",
+      "query_id": "q2",
+      "old_semantic_query": "海尔智家 2024年 合并利润表 营业收入",
+      "new_semantic_query": "合并利润表 2024年度 营业收入 金额",
+      "structured_identity_unchanged": true
+    }
+  ],
+  "case_comparisons": [
+    {
+      "case_id": "complex_001",
+      "v1_status": "completed",
+      "v2_status": "completed",
+      "status_changed": false,
+      "v1_error_stage": null,
+      "v2_error_stage": null,
+      "v1_retrieval_trace_count": 2,
+      "v2_retrieval_trace_count": 2,
+      "v1_answer_generated": true,
+      "v2_answer_generated": true
+    },
+    {
+      "case_id": "complex_002",
+      "v1_status": "completed",
+      "v2_status": "completed",
+      "status_changed": false,
+      "v1_error_stage": null,
+      "v2_error_stage": null,
+      "v1_retrieval_trace_count": 2,
+      "v2_retrieval_trace_count": 2,
+      "v1_answer_generated": true,
+      "v2_answer_generated": true
+    },
+    {
+      "case_id": "complex_003",
+      "v1_status": "completed",
+      "v2_status": "completed",
+      "status_changed": false,
+      "v1_error_stage": null,
+      "v2_error_stage": null,
+      "v1_retrieval_trace_count": 2,
+      "v2_retrieval_trace_count": 2,
+      "v1_answer_generated": true,
+      "v2_answer_generated": true
+    },
+    {
+      "case_id": "complex_004",
+      "v1_status": "failed",
+      "v2_status": "completed",
+      "status_changed": true,
+      "v1_error_stage": "retrieval",
+      "v2_error_stage": null,
+      "v1_retrieval_trace_count": 2,
+      "v2_retrieval_trace_count": 4,
+      "v1_answer_generated": false,
+      "v2_answer_generated": true
+    }
+  ],
+  "control_checks": {
+    "same_recorded_runtime_identity": false,
+    "v1_top_k_values": [
+      5
+    ],
+    "v2_top_k_values": [
+      5
+    ],
+    "same_top_k": true,
+    "structured_query_identity_preserved": true,
+    "same_core_runtime_identity": true,
+    "same_calculator_on_calculation_cases": true,
+    "same_effective_experiment_configuration": true,
+    "raw_runtime_identity_differences": [
+      {
+        "case_id": "complex_004",
+        "field": "calculator_id",
+        "v1_value": "deterministic_calculator_v1",
+        "v2_value": null
+      }
+    ],
+    "calculator_id_recording_note": "For complex_004, the failed v1 run records the configured calculator_id, while the completed v2 non-calculation run records calculator_id as null. This is a result instrumentation difference, not an experiment configuration change."
+  },
+  "failure_analysis": {
+    "affected_case_id": "complex_004",
+    "affected_query_id": "q2",
+    "failure_stage": "retrieval",
+    "primary_root_cause": "query_rewrite_sensitivity",
+    "secondary_observation": "single_primary_evidence_constraint",
+    "v1_gold_page": 121,
+    "v1_alternate_valid_page": 200,
+    "v1_alternate_valid_page_rank": 4,
+    "v1_gold_page_in_top5": false,
+    "v2_gold_page_resolved": true,
+    "recommended_future_action": "Model multiple independently verified evidences per fact instead of weakening page-level evidence validation."
+  },
+  "conclusion": "On the pilot development set, changing one retrieval rewrite improved end-to-end completion from 3/4 to 4/4 without observed regression in the other three cases.",
+  "comparison_revision": "v2_control_check_fix"
+}

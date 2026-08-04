@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "evaluation_set_id": "retrieval_benchmark_v1_haier_smart_home_2024",
+  "strategy": "fixed_length",
+  "retriever_type": "bm25",
+  "chunk_dataset_id": "chunk_dataset_haier_smart_home_2024_6aa9f9aaff9d79d873269575",
+  "index_id": "bm25_index_haier_smart_home_2024_c11b15025cb81be6a4fe8d41",
+  "case_ids": [
+    "haier_2024_cash_and_cash_equivalents",
+    "haier_2024_accounts_receivable",
+    "haier_2024_short_term_borrowings",
+    "haier_2024_revenue",
+    "haier_2024_operating_cost",
+    "haier_2024_parent_net_profit",
+    "haier_2024_selling_expenses",
+    "haier_2024_research_and_development_expenses",
+    "haier_2024_operating_cash_flow",
+    "haier_2024_investing_cash_flow",
+    "haier_2024_overseas_revenue",
+    "haier_2024_basic_eps"
+  ],
+  "case_count": 12,
+  "hit_at_1_count": 5,
+  "hit_at_3_count": 5,
+  "hit_at_5_count": 8,
+  "recall_at_1": 0.4166666666666667,
+  "recall_at_3": 0.4166666666666667,
+  "recall_at_5": 0.6666666666666666,
+  "mrr": 0.5008597883597884,
+  "ndcg_at_1": 0.4166666666666667,
+  "ndcg_at_3": 0.4166666666666667,
+  "ndcg_at_5": 0.5243358061850149
+}

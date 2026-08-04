@@ -1,0 +1,138 @@
+{
+  "bm25_index_id": "bm25_index_hisense_home_2024_483c2cb4d0bfca4c01c76e2d",
+  "case_timings": [
+    {
+      "case_id": "fact_006",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 27.90360013023019,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 8240.443299990147,
+      "total_latency_ms": 8268.349200021476
+    },
+    {
+      "case_id": "smoke_hisense_2024_accounts_receivable",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 21.565299946814775,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9507.207399932668,
+      "total_latency_ms": 9528.776299906895
+    },
+    {
+      "case_id": "smoke_hisense_2024_inventory_goods_write_down",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 26.795800076797605,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9794.354900019243,
+      "total_latency_ms": 9821.15380000323
+    },
+    {
+      "case_id": "smoke_hisense_2024_ocf",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 23.701300146058202,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 10008.914199890569,
+      "total_latency_ms": 10032.619500067085
+    },
+    {
+      "case_id": "smoke_hisense_2024_operating_cost",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 21.18110004812479,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9877.640899969265,
+      "total_latency_ms": 9898.824999807402
+    },
+    {
+      "case_id": "smoke_hisense_2024_parent_net_profit",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 22.005300037562847,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9767.214600229636,
+      "total_latency_ms": 9789.223699830472
+    },
+    {
+      "case_id": "smoke_hisense_2024_revenue",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 20.603900076821446,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 9895.266800187528,
+      "total_latency_ms": 9915.874100057408
+    },
+    {
+      "case_id": "smoke_hisense_2024_total_assets",
+      "hybrid_hit_count": 50,
+      "hybrid_latency_ms": 19.481699913740158,
+      "reranked_hit_count": 50,
+      "reranker_latency_ms": 10287.755999946967,
+      "total_latency_ms": 10307.241500122473
+    }
+  ],
+  "chunk_dataset_id": "chunk_dataset_hisense_home_2024_e4037c657b0225201366f46b",
+  "dense_index_created": false,
+  "dense_index_id": "vector_index_hisense_home_2024_25d43849316e318af26c9094",
+  "embedding_spec": {
+    "dimension": 512,
+    "document_prefix": "",
+    "dtype": "float32",
+    "max_sequence_length": 512,
+    "model_name": "BAAI/bge-small-zh-v1.5",
+    "model_version": "534b6bfaaf500e70bcb9f3771cebc940c23b219d",
+    "normalize_embeddings": true,
+    "provider": "sentence_transformers",
+    "query_prefix": "为这个句子生成表示以用于检索相关文章：",
+    "schema_version": 1
+  },
+  "evaluation_set_id": "hisense_home_2024_reranker_bge_base_fixed_v1",
+  "hybrid_run_id": "hybrid_run_hisense_home_2024_5904fe81479c7f3b3070dc33",
+  "latency_summary_ms": {
+    "hybrid_mean": 22.90475004701875,
+    "hybrid_p50": 21.565299946814775,
+    "hybrid_p95": 27.90360013023019,
+    "reranker_mean": 9672.349762520753,
+    "reranker_p50": 9794.354900019243,
+    "reranker_p95": 10287.755999946967,
+    "total_mean": 9695.257887477055,
+    "total_p50": 9821.15380000323,
+    "total_p95": 10307.241500122473
+  },
+  "report_id": "hisense_home_2024",
+  "reranker_run_id": "reranker_run_hisense_home_2024_625bd6b92b6508fa14ea6865",
+  "reranker_runtime_config": {
+    "batch_size": 4,
+    "device": "cpu",
+    "local_files_only": true,
+    "rerank_candidate_count": 50,
+    "return_count": 50
+  },
+  "reranker_spec": {
+    "architecture": "cross_encoder",
+    "input_template_version": "query_chunk_v1",
+    "max_length": 512,
+    "model_name": "BAAI/bge-reranker-base",
+    "model_revision": "2cfc18c9415c912f9d8155881c133215df768a70",
+    "provider": "sentence_transformers_cross_encoder",
+    "schema_version": 1,
+    "score_type": "cross_encoder_logit"
+  },
+  "retriever_type": "hybrid_reranker",
+  "rrf_config": {
+    "bm25_candidate_count": 50,
+    "dense_candidate_count": 50,
+    "fusion_method": "reciprocal_rank_fusion",
+    "fusion_version": "rrf_v1",
+    "rank_constant": 60,
+    "schema_version": 1
+  },
+  "schema_version": 1,
+  "tokenizer_spec": {
+    "ascii_token_rule": "contiguous_alnum",
+    "boundary_rule": "non_cjk_non_ascii_alnum",
+    "cjk_ngram_size": 2,
+    "cjk_token_rule": "character_ngram",
+    "lowercase_ascii": true,
+    "schema_version": 1,
+    "single_cjk_fallback": "keep_single_character",
+    "tokenizer_name": "deterministic_chinese_bigram",
+    "tokenizer_version": "deterministic_chinese_bigram_v1",
+    "unicode_normalization": "NFKC"
+  }
+}

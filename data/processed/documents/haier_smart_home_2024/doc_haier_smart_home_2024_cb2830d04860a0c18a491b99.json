@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "document_id": "doc_haier_smart_home_2024_cb2830d04860a0c18a491b99",
+  "report_id": "haier_smart_home_2024",
+  "source_path": "data/raw_reports/haier_smart_home/2024/haier_smart_home_2024_annual_report.pdf",
+  "source_filename": "haier_smart_home_2024_annual_report.pdf",
+  "sha256": "cb2830d04860a0c18a491b9998c0928d1b77e740f07824a34f7543d823f7b10b",
+  "file_size_bytes": 5167345,
+  "pdf_page_count": 247,
+  "expected_pdf_page_count": 247,
+  "page_count_status": "matched",
+  "parser_name": "pymupdf",
+  "parser_version": "1.28.0",
+  "validation_status": "valid",
+  "created_at": "2026-08-01T13:15:55.642784Z"
+}

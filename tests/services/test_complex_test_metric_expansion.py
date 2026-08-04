@@ -1,0 +1,300 @@
+from pathlib import Path
+
+import pytest
+
+from app.services.registry_loader import load_metrics
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+METRICS_YAML_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "processed"
+    / "registries"
+    / "metrics.yaml"
+)
+
+
+REPORTED_CONTRACTS = {
+    "short_term_borrowings": (
+        "balance_sheet",
+        "instant",
+    ),
+    "long_term_borrowings": (
+        "balance_sheet",
+        "instant",
+    ),
+    "bonds_payable": (
+        "balance_sheet",
+        "instant",
+    ),
+    "fixed_assets": (
+        "balance_sheet",
+        "instant",
+    ),
+    "intangible_assets": (
+        "balance_sheet",
+        "instant",
+    ),
+    "goodwill": (
+        "balance_sheet",
+        "instant",
+    ),
+    "operating_profit": (
+        "income_statement",
+        "duration",
+    ),
+    "total_profit": (
+        "income_statement",
+        "duration",
+    ),
+    "current_assets": (
+        "balance_sheet",
+        "instant",
+    ),
+    "current_liabilities": (
+        "balance_sheet",
+        "instant",
+    ),
+    "total_equity": (
+        "balance_sheet",
+        "instant",
+    ),
+    "net_cash_flow_from_financing_activities": (
+        "cash_flow_statement",
+        "duration",
+    ),
+    "income_tax_expense": (
+        "income_statement",
+        "duration",
+    ),
+    "monetary_funds": (
+        "balance_sheet",
+        "instant",
+    ),
+    "management_expenses": (
+        "income_statement",
+        "duration",
+    ),
+}
+
+
+DERIVED_CONTRACTS = {
+    "current_ratio": {
+        "statement_type": "balance_sheet",
+        "period_type": "instant",
+        "unit": "ratio",
+        "formula_id": "current_ratio_formula",
+    },
+    "debt_to_equity_ratio": {
+        "statement_type": "balance_sheet",
+        "period_type": "instant",
+        "unit": "ratio",
+        "formula_id": "debt_to_equity_ratio_formula",
+    },
+    "effective_income_tax_rate": {
+        "statement_type": "income_statement",
+        "period_type": "duration",
+        "unit": "percent",
+        "formula_id": (
+            "effective_income_tax_rate_formula"
+        ),
+    },
+}
+
+
+NEW_METRIC_IDS = (
+    set(REPORTED_CONTRACTS)
+    | set(DERIVED_CONTRACTS)
+)
+
+
+EXPECTED_CONFUSABLES = {
+    "short_term_borrowings": {
+        "long_term_borrowings",
+    },
+    "long_term_borrowings": {
+        "short_term_borrowings",
+    },
+    "operating_profit": {
+        "total_profit",
+        "net_profit",
+    },
+    "total_profit": {
+        "operating_profit",
+        "net_profit",
+    },
+    "current_assets": {
+        "total_assets",
+    },
+    "current_liabilities": {
+        "total_liabilities",
+    },
+    "management_expenses": {
+        "selling_expenses",
+        "research_and_development_expenses",
+    },
+}
+
+
+@pytest.fixture(scope="module")
+def loaded_metrics():
+    return load_metrics(METRICS_YAML_PATH)
+
+
+def test_expanded_registry_has_expected_sizes(
+    loaded_metrics,
+) -> None:
+    registry, aliases = loaded_metrics
+
+    assert len(registry) == 41
+    assert len(aliases) == 52
+
+
+def test_all_complex_test_metrics_exist(
+    loaded_metrics,
+) -> None:
+    registry, _ = loaded_metrics
+
+    missing_metric_ids = (
+        NEW_METRIC_IDS - set(registry.keys())
+    )
+
+    assert missing_metric_ids == set()
+
+
+def test_reported_metric_contracts(
+    loaded_metrics,
+) -> None:
+    registry, _ = loaded_metrics
+
+    for metric_id, (
+        statement_type,
+        period_type,
+    ) in REPORTED_CONTRACTS.items():
+        metric = registry.require(metric_id)
+
+        assert metric.metric_origin.value == "reported"
+        assert metric.statement_type.value == statement_type
+        assert metric.period_type.value == period_type
+        assert metric.default_unit.value == "CNY"
+        assert metric.formula_id is None
+        assert metric.is_core_metric is True
+
+
+def test_derived_metric_contracts(
+    loaded_metrics,
+) -> None:
+    registry, _ = loaded_metrics
+
+    formula_ids = []
+
+    for metric_id, expected in (
+        DERIVED_CONTRACTS.items()
+    ):
+        metric = registry.require(metric_id)
+
+        assert metric.metric_origin.value == "derived"
+        assert (
+            metric.statement_type.value
+            == expected["statement_type"]
+        )
+        assert (
+            metric.period_type.value
+            == expected["period_type"]
+        )
+        assert (
+            metric.default_unit.value
+            == expected["unit"]
+        )
+        assert (
+            metric.formula_id
+            == expected["formula_id"]
+        )
+        assert metric.is_core_metric is False
+
+        formula_ids.append(metric.formula_id)
+
+    assert len(formula_ids) == len(set(formula_ids))
+
+
+def test_new_metrics_allow_expected_scopes(
+    loaded_metrics,
+) -> None:
+    registry, _ = loaded_metrics
+
+    expected_scopes = {
+        "consolidated",
+        "parent_company",
+    }
+
+    for metric_id in NEW_METRIC_IDS:
+        metric = registry.require(metric_id)
+
+        actual_scopes = {
+            scope.value
+            for scope in metric.allowed_scopes
+        }
+
+        assert actual_scopes == expected_scopes
+
+
+def test_new_metrics_have_expected_alias_coverage(
+    loaded_metrics,
+) -> None:
+    _, aliases = loaded_metrics
+
+    new_aliases = [
+        alias
+        for alias in aliases
+        if alias.metric_id in NEW_METRIC_IDS
+    ]
+
+    alias_metric_ids = {
+        alias.metric_id
+        for alias in new_aliases
+    }
+
+    assert len(new_aliases) == 20
+    assert alias_metric_ids == NEW_METRIC_IDS
+
+
+def test_total_equity_aliases_cover_report_variants(
+    loaded_metrics,
+) -> None:
+    _, aliases = loaded_metrics
+
+    actual_aliases = {
+        alias.alias
+        for alias in aliases
+        if alias.metric_id == "total_equity"
+    }
+
+    expected_aliases = {
+        "\u6240\u6709\u8005\u6743\u76ca\u5408\u8ba1",
+        "\u80a1\u4e1c\u6743\u76ca\u5408\u8ba1",
+        (
+            "\u6240\u6709\u8005\u6743\u76ca"
+            "\uff08\u6216\u80a1\u4e1c\u6743\u76ca"
+            "\uff09\u5408\u8ba1"
+        ),
+    }
+
+    assert actual_aliases == expected_aliases
+
+
+def test_confusable_metric_boundaries(
+    loaded_metrics,
+) -> None:
+    registry, _ = loaded_metrics
+
+    for metric_id, expected_ids in (
+        EXPECTED_CONFUSABLES.items()
+    ):
+        metric = registry.require(metric_id)
+
+        assert (
+            set(metric.confusable_metric_ids)
+            == expected_ids
+        )
