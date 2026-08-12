@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "eval_name": "runtime_control_dev_v1",
+  "case_count": 50,
+  "passed_count": 50,
+  "completed_count": 42,
+  "refused_count": 4,
+  "awaiting_human_count": 4,
+  "failed_count": 0,
+  "intent_accuracy": 1.0,
+  "argument_accuracy": 1.0,
+  "plan_accuracy": 1.0,
+  "tool_accuracy": 1.0,
+  "tool_sequence_accuracy": 1.0,
+  "termination_accuracy": 1.0,
+  "task_success_rate": 1.0,
+  "replay_applicable_count": 46,
+  "replay_success_count": 46,
+  "replay_success_rate": 1.0
+}

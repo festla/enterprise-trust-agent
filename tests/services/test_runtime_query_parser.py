@@ -444,3 +444,31 @@ def test_records_missing_identity_fields(
     )
 
     assert result.confidence < 1.0
+
+
+def test_respectively_does_not_mean_comparison(
+) -> None:
+    parser = _build_parser()
+
+    result = parser.parse(
+        "美的集团2024年"
+        "营业收入和净利润分别是多少？"
+    )
+
+    assert (
+        result.metric_ids
+        == (
+            "revenue",
+            "net_profit",
+        )
+    )
+
+    assert (
+        result.comparison_requested
+        is False
+    )
+
+    assert (
+        result.ranking_requested
+        is False
+    )

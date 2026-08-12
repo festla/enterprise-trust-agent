@@ -91,7 +91,6 @@ _COMPARISON_KEYWORDS = (
     "同比",
     "环比",
     "差异",
-    "分别",
 )
 
 
