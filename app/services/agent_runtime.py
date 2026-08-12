@@ -13,11 +13,33 @@ from typing import Protocol
 from uuid import uuid4
 
 from app.schemas.agent_runtime import (
+    AgentErrorRecord,
     AgentIntent,
     AgentState,
+    AgentTrajectory,
     NodeSpan,
     ParsedFinancialQuery,
     RuntimePlan,
+)
+from app.services.checkpoint_store import (
+    CheckpointStore,
+)
+from app.services.runtime_completion import (
+    RuntimeAnswerGenerationError,
+    RuntimeAnswerGenerator,
+    RuntimeEvidenceError,
+    RuntimeEvidenceVerifier,
+)
+from app.services.runtime_plan_executor import (
+    RuntimePlanExecutor,
+    RuntimePlanExecutorError,
+)
+from app.services.tool_registry import (
+    ToolExecutionFailedError,
+    ToolRegistryError,
+)
+from app.services.trajectory_store import (
+    TrajectoryStore,
 )
 
 
@@ -25,31 +47,6 @@ class AgentRuntimeError(
     ValueError
 ):
     """Framework-independent Agent Runtime 基础异常。"""
-
-
-# ============================================================
-# AgentRuntime 不应该强绑定：
-#
-# RuntimeQueryParser
-# RuntimeIntentRouter
-# RuntimePlanner
-#
-# 它只要求这些对象实现对应接口。
-#
-#
-# AgentRuntime
-#      ↓
-# Protocol
-#      ↓
-# Deterministic Parser / Router / Planner
-#
-# 后面即使换成：
-#
-# LLM Structured Output Parser
-# LLM Planner
-#
-# Runtime 主循环也不需要重写。
-# ============================================================
 
 
 class QueryParserProvider(
@@ -61,7 +58,7 @@ class QueryParserProvider(
         self,
         question: str,
     ) -> ParsedFinancialQuery:
-        """把用户问题解析为结构化 Query。"""
+        """解析用户问题。"""
 
 
 class IntentRouterProvider(
@@ -73,7 +70,7 @@ class IntentRouterProvider(
         self,
         parsed_query: ParsedFinancialQuery,
     ) -> AgentIntent:
-        """根据 Parsed Query 判断任务 Intent。"""
+        """判断任务 Intent。"""
 
 
 class RuntimePlannerProvider(
@@ -87,26 +84,7 @@ class RuntimePlannerProvider(
         parsed_query: ParsedFinancialQuery,
         intent: AgentIntent,
     ) -> RuntimePlan:
-        """生成可执行 RuntimePlan。"""
-
-
-# ============================================================
-# 时间和 ID 也通过接口注入。
-#
-# 原因：
-#
-# Production：
-#
-#     datetime.now(...)
-#     uuid4()
-#
-# Test：
-#
-#     固定时间
-#     request_1 / run_1 ...
-#
-# 这样测试不会依赖随机值。
-# ============================================================
+        """生成 RuntimePlan。"""
 
 
 class RuntimeClock(
@@ -115,7 +93,7 @@ class RuntimeClock(
     def now(
         self,
     ) -> datetime:
-        """返回带时区的当前时间。"""
+        """返回当前时间。"""
 
 
 class RuntimeIdFactory(
@@ -125,7 +103,7 @@ class RuntimeIdFactory(
         self,
         prefix: str,
     ) -> str:
-        """生成一个 Runtime ID。"""
+        """生成 Runtime ID。"""
 
 
 @dataclass(
@@ -156,7 +134,10 @@ class UUIDRuntimeIdFactory:
 
 
 def _unique_in_order(
-    values: tuple[str, ...],
+    values: tuple[
+        str,
+        ...
+    ],
 ) -> tuple[str, ...]:
     result: list[str] = []
     seen: set[str] = set()
@@ -171,32 +152,6 @@ def _unique_in_order(
     return tuple(result)
 
 
-# ============================================================
-# 这就是 Week 6 Step 8 的核心类。
-#
-#
-#                    AgentRuntime
-#
-#                         │
-#            ┌────────────┼────────────┐
-#            ↓            ↓            ↓
-#          Parser       Router       Planner
-#
-#            │            │            │
-#            └────────────┴────────────┘
-#                         ↓
-#
-#                    AgentState
-#
-#
-# 8A 只执行到：
-#
-# status = "planned"
-#
-# 暂时不执行任何 Tool。
-# ============================================================
-
-
 @dataclass(
     frozen=True,
     slots=True,
@@ -208,29 +163,37 @@ class AgentRuntime:
 
     planner: RuntimePlannerProvider
 
+    plan_executor: (
+        RuntimePlanExecutor | None
+    ) = None
+
+    verifier: (
+        RuntimeEvidenceVerifier | None
+    ) = None
+
+    answer_generator: (
+        RuntimeAnswerGenerator | None
+    ) = None
+
+    checkpoint_store: (
+        CheckpointStore | None
+    ) = None
+
+    trajectory_store: (
+        TrajectoryStore | None
+    ) = None
+
     clock: RuntimeClock = field(
         default_factory=UTCClock
     )
 
-    id_factory: RuntimeIdFactory = field(
-        default_factory=(
-            UUIDRuntimeIdFactory
+    id_factory: RuntimeIdFactory = (
+        field(
+            default_factory=(
+                UUIDRuntimeIdFactory
+            )
         )
     )
-
-    # ========================================================
-    # create_state 只负责：
-    #
-    # “一次 Agent Run 的初始化”
-    #
-    # 此时：
-    #
-    # parsed_query = None
-    # intent = None
-    # runtime_plan = None
-    #
-    # status = created
-    # ========================================================
 
     def create_state(
         self,
@@ -272,38 +235,14 @@ class AgentRuntime:
             query=query,
             status="created",
             max_steps=max_steps,
-            current_node=(
-                "parse_query"
-            ),
-            next_node=(
-                "parse_query"
-            ),
+            current_node="parse_query",
+            next_node="parse_query",
             started_at=now,
             updated_at=now,
         )
 
-    # ========================================================
-    # prepare() 是 8A 的主入口。
-    #
-    #
-    # create
-    #   ↓
-    # parse
-    #   ↓
-    # route
-    #   ↓
-    # plan
-    #   ↓
-    # planned
-    #
-    #
-    # 8B 后面会变成：
-    #
-    # prepare
-    #   ↓
-    # execute_plan
-    # ========================================================
-
+    # prepare 保持 8A 语义：
+    # 只执行 parse -> route -> plan。
     def prepare(
         self,
         *,
@@ -323,7 +262,15 @@ class AgentRuntime:
             max_steps=max_steps,
         )
 
+        state = self._persist_checkpoint(
+            state
+        )
+
         state = self._run_parse_node(
+            state
+        )
+
+        state = self._persist_checkpoint(
             state
         )
 
@@ -331,15 +278,16 @@ class AgentRuntime:
             state
         )
 
-        # ====================================================
-        # unsupported 不应该继续交给 Planner。
-        #
-        # 这是正常业务拒答，
-        # 不是系统崩溃。
-        # ====================================================
+        state = self._persist_checkpoint(
+            state
+        )
 
         if state.intent == "unsupported":
-            return self._mark_refused(
+            state = self._mark_refused(
+                state
+            )
+
+            return self._persist_checkpoint(
                 state
             )
 
@@ -349,83 +297,154 @@ class AgentRuntime:
             )
         )
 
-        blocking_missing_fields = (
-            self
-            ._blocking_missing_fields(
+        missing_fields = (
+            self._blocking_missing_fields(
                 parsed_query
             )
         )
 
-        # ====================================================
-        # Missing != Unsupported
-        #
-        #
-        # “营业收入是多少？”
-        #
-        # Router：
-        #     financial_fact
-        #
-        # 但是：
-        #     company/year 不完整
-        #
-        # 所以不能：
-        #
-        #     refused
-        #
-        # 而应该：
-        #
-        #     awaiting_human
-        #
-        # 后面 Step 9 LangGraph Interrupt
-        # 就会真正接住这个状态。
-        # ====================================================
-
-        if blocking_missing_fields:
-            return (
+        if missing_fields:
+            state = (
                 self
                 ._mark_awaiting_human(
                     state,
                     blocking_missing_fields=(
-                        blocking_missing_fields
+                        missing_fields
                     ),
                 )
+            )
+
+            return self._persist_checkpoint(
+                state
             )
 
         state = self._run_plan_node(
             state
         )
 
-        return state
+        return self._persist_checkpoint(
+            state
+        )
 
-    # ========================================================
-    # Parse Node
-    # ========================================================
+    # 完整 Framework-independent Runtime 入口。
+    def run(
+        self,
+        *,
+        query: str,
+        request_id: str | None = None,
+        trace_id: str | None = None,
+        run_id: str | None = None,
+        thread_id: str | None = None,
+        max_steps: int = 32,
+    ) -> AgentState:
+        state = self.prepare(
+            query=query,
+            request_id=request_id,
+            trace_id=trace_id,
+            run_id=run_id,
+            thread_id=thread_id,
+            max_steps=max_steps,
+        )
+
+        if state.status in {
+            "completed",
+            "refused",
+            "failed",
+        }:
+            self._save_trajectory(
+                state
+            )
+            return state
+
+        if (
+            state.status
+            == "awaiting_human"
+        ):
+            return state
+
+        try:
+            self._require_execution_services()
+
+            assert (
+                self.plan_executor
+                is not None
+            )
+
+            assert self.verifier is not None
+
+            assert (
+                self.answer_generator
+                is not None
+            )
+
+            while (
+                state.runtime_plan
+                is not None
+                and state.current_step
+                < len(
+                    state.runtime_plan
+                    .plan.steps
+                )
+            ):
+                state = (
+                    self.plan_executor
+                    .execute_next_step(
+                        state
+                    )
+                )
+
+                state = (
+                    self._persist_checkpoint(
+                        state
+                    )
+                )
+
+            state = self.verifier.verify(
+                state
+            )
+
+            state = self._persist_checkpoint(
+                state
+            )
+
+            state = (
+                self.answer_generator
+                .generate(
+                    state
+                )
+            )
+
+            state = self._persist_checkpoint(
+                state
+            )
+
+        except Exception as exc:
+            state = self._handle_failure(
+                state=state,
+                error=exc,
+            )
+
+            state = self._persist_checkpoint(
+                state
+            )
+
+        if state.status in {
+            "completed",
+            "refused",
+            "failed",
+        }:
+            self._save_trajectory(
+                state
+            )
+
+        return state
 
     def _run_parse_node(
         self,
         state: AgentState,
     ) -> AgentState:
-        node_started_at = (
-            self.clock.now()
-        )
-
-        timer_start = (
-            perf_counter()
-        )
-
-        state = self._replace_state(
-            state,
-            status="parsing",
-            current_node=(
-                "parse_query"
-            ),
-            next_node=(
-                "route_intent"
-            ),
-            updated_at=(
-                node_started_at
-            ),
-        )
+        started_at = self.clock.now()
+        timer_start = perf_counter()
 
         parsed_query = (
             self.query_parser.parse(
@@ -433,8 +452,14 @@ class AgentRuntime:
             )
         )
 
-        node_completed_at = (
-            self.clock.now()
+        completed_at = self.clock.now()
+
+        target_metric_ids = (
+            _unique_in_order(
+                parsed_query.metric_ids
+                + parsed_query
+                .calculation_metric_ids
+            )
         )
 
         span = (
@@ -452,60 +477,21 @@ class AgentRuntime:
                     "report_count": len(
                         parsed_query.report_ids
                     ),
-                    "year_count": len(
-                        parsed_query.years
-                    ),
-                    "reported_metric_count": len(
-                        parsed_query.metric_ids
-                    ),
-                    "derived_metric_count": len(
-                        parsed_query
-                        .calculation_metric_ids
-                    ),
-                    "confidence": (
-                        parsed_query.confidence
+                    "metric_count": len(
+                        target_metric_ids
                     ),
                     "parser_version": (
                         self.query_parser
                         .parser_version
                     ),
                 },
-                started_at=(
-                    node_started_at
-                ),
-                completed_at=(
-                    node_completed_at
-                ),
-                timer_start=(
-                    timer_start
-                ),
+                started_at=started_at,
+                completed_at=completed_at,
+                timer_start=timer_start,
                 checkpoint_revision=(
                     state
                     .checkpoint_revision
                 ),
-            )
-        )
-
-        # ====================================================
-        # AgentState.metric_ids 是 Runtime 层的
-        # “目标指标摘要”。
-        #
-        # 因此这里把：
-        #
-        # reported metric
-        # +
-        # derived metric
-        #
-        # 都保存进去。
-        #
-        # 详细区分仍然保留在 parsed_query 内。
-        # ====================================================
-
-        target_metric_ids = (
-            _unique_in_order(
-                parsed_query.metric_ids
-                + parsed_query
-                .calculation_metric_ids
             )
         )
 
@@ -527,6 +513,9 @@ class AgentRuntime:
             confidence=(
                 parsed_query.confidence
             ),
+            status="parsing",
+            current_node="parse_query",
+            next_node="route_intent",
             node_spans=(
                 state.node_spans
                 + (
@@ -536,14 +525,8 @@ class AgentRuntime:
             step_count=(
                 state.step_count + 1
             ),
-            updated_at=(
-                node_completed_at
-            ),
+            updated_at=completed_at,
         )
-
-    # ========================================================
-    # Route Node
-    # ========================================================
 
     def _run_route_node(
         self,
@@ -555,13 +538,8 @@ class AgentRuntime:
             )
         )
 
-        node_started_at = (
-            self.clock.now()
-        )
-
-        timer_start = (
-            perf_counter()
-        )
+        started_at = self.clock.now()
+        timer_start = perf_counter()
 
         intent = (
             self.intent_router.route(
@@ -569,32 +547,12 @@ class AgentRuntime:
             )
         )
 
-        node_completed_at = (
-            self.clock.now()
-        )
-
-        next_node = (
-            "finish"
-            if intent == "unsupported"
-            else "create_plan"
-        )
+        completed_at = self.clock.now()
 
         span = (
             self._build_completed_span(
                 node_name="route_intent",
                 input_summary={
-                    "has_reported_metrics": (
-                        bool(
-                            parsed_query
-                            .metric_ids
-                        )
-                    ),
-                    "has_derived_metrics": (
-                        bool(
-                            parsed_query
-                            .calculation_metric_ids
-                        )
-                    ),
                     "comparison_requested": (
                         parsed_query
                         .comparison_requested
@@ -615,15 +573,9 @@ class AgentRuntime:
                         .router_version
                     ),
                 },
-                started_at=(
-                    node_started_at
-                ),
-                completed_at=(
-                    node_completed_at
-                ),
-                timer_start=(
-                    timer_start
-                ),
+                started_at=started_at,
+                completed_at=completed_at,
+                timer_start=timer_start,
                 checkpoint_revision=(
                     state
                     .checkpoint_revision
@@ -635,10 +587,12 @@ class AgentRuntime:
             state,
             intent=intent,
             status="routed",
-            current_node=(
-                "route_intent"
+            current_node="route_intent",
+            next_node=(
+                "finish"
+                if intent == "unsupported"
+                else "create_plan"
             ),
-            next_node=next_node,
             node_spans=(
                 state.node_spans
                 + (
@@ -648,14 +602,8 @@ class AgentRuntime:
             step_count=(
                 state.step_count + 1
             ),
-            updated_at=(
-                node_completed_at
-            ),
+            updated_at=completed_at,
         )
-
-    # ========================================================
-    # Plan Node
-    # ========================================================
 
     def _run_plan_node(
         self,
@@ -673,13 +621,8 @@ class AgentRuntime:
             )
         )
 
-        node_started_at = (
-            self.clock.now()
-        )
-
-        timer_start = (
-            perf_counter()
-        )
+        started_at = self.clock.now()
+        timer_start = perf_counter()
 
         runtime_plan = (
             self.planner.create_plan(
@@ -690,38 +633,22 @@ class AgentRuntime:
             )
         )
 
-        node_completed_at = (
-            self.clock.now()
-        )
+        completed_at = self.clock.now()
 
         span = (
             self._build_completed_span(
                 node_name="create_plan",
                 input_summary={
                     "intent": intent,
-                    "report_count": len(
-                        parsed_query.report_ids
-                    ),
-                    "target_metric_count": (
-                        len(
-                            parsed_query
-                            .metric_ids
-                        )
-                        + len(
-                            parsed_query
-                            .calculation_metric_ids
-                        )
-                    ),
                 },
                 output_summary={
                     "planner_version": (
                         runtime_plan
                         .planner_version
                     ),
-                    "plan_step_count": len(
+                    "step_count": len(
                         runtime_plan
-                        .plan
-                        .steps
+                        .plan.steps
                     ),
                     "financial_query_count": len(
                         runtime_plan
@@ -732,15 +659,9 @@ class AgentRuntime:
                         .document_queries
                     ),
                 },
-                started_at=(
-                    node_started_at
-                ),
-                completed_at=(
-                    node_completed_at
-                ),
-                timer_start=(
-                    timer_start
-                ),
+                started_at=started_at,
+                completed_at=completed_at,
+                timer_start=timer_start,
                 checkpoint_revision=(
                     state
                     .checkpoint_revision
@@ -750,20 +671,14 @@ class AgentRuntime:
 
         return self._replace_state(
             state,
-            runtime_plan=(
-                runtime_plan
-            ),
+            runtime_plan=runtime_plan,
             planner_version=(
                 runtime_plan
                 .planner_version
             ),
             status="planned",
-            current_node=(
-                "create_plan"
-            ),
-            next_node=(
-                "execute_plan"
-            ),
+            current_node="create_plan",
+            next_node="execute_plan",
             node_spans=(
                 state.node_spans
                 + (
@@ -773,14 +688,8 @@ class AgentRuntime:
             step_count=(
                 state.step_count + 1
             ),
-            updated_at=(
-                node_completed_at
-            ),
+            updated_at=completed_at,
         )
-
-    # ========================================================
-    # Expected early exits
-    # ========================================================
 
     def _mark_refused(
         self,
@@ -792,9 +701,9 @@ class AgentRuntime:
             state,
             status="refused",
             stop_reason="unsupported",
-            completed_at=now,
             current_node="finish",
             next_node="finish",
+            completed_at=now,
             updated_at=now,
         )
 
@@ -809,13 +718,6 @@ class AgentRuntime:
     ) -> AgentState:
         now = self.clock.now()
 
-        reason = (
-            "生成执行计划所需字段缺失："
-            + ", ".join(
-                blocking_missing_fields
-            )
-        )
-
         return self._replace_state(
             state,
             status="awaiting_human",
@@ -823,74 +725,509 @@ class AgentRuntime:
                 "human_review_required"
             ),
             pending_human_review=True,
-            human_review_reason=reason,
+            human_review_reason=(
+                "生成执行计划所需字段缺失："
+                + ", ".join(
+                    blocking_missing_fields
+                )
+            ),
             current_node="await_human",
             next_node="await_human",
             updated_at=now,
         )
 
-    # ========================================================
-    # 为什么不用：
-    #
-    #     state.status = "refused"
-    #     state.stop_reason = ...
-    #     state.completed_at = ...
-    #
-    #
-    # 因为 AgentState 开启了：
-    #
-    #     validate_assignment=True
-    #
-    # 并且有跨字段 Model Validator。
-    #
-    # 如果先设置：
-    #
-    #     status = refused
-    #
-    # 此时：
-    #
-    #     completed_at 还是 None
-    #     stop_reason 还是 None
-    #
-    # 模型会立刻判定为非法状态。
-    #
-    #
-    # 所以 Runtime State Transition
-    # 应该“原子更新”：
-    #
-    # old state
-    #    ↓
-    # dump
-    #    ↓
-    # 同时 update 多个字段
-    #    ↓
-    # 重新完整校验
-    #    ↓
-    # new state
-    #
-    # 这是 8A 最值得理解的地方之一。
-    # ========================================================
+    # 将执行异常转换为可审计的终止状态。
+    def _handle_failure(
+        self,
+        *,
+        state: AgentState,
+        error: Exception,
+    ) -> AgentState:
+        now = self.clock.now()
+
+        stop_reason, final_status = (
+            self._classify_failure(
+                error
+            )
+        )
+
+        stage = self._failure_stage(
+            error
+        )
+
+        extra_tool_traces = ()
+
+        if isinstance(
+            error,
+            ToolExecutionFailedError,
+        ):
+            extra_tool_traces = (
+                error.traces
+            )
+
+        elif isinstance(
+            error,
+            RuntimePlanExecutorError,
+        ):
+            if (
+                error.execution_result
+                is not None
+            ):
+                extra_tool_traces = (
+                    error.execution_result
+                    .traces
+                )
+
+        tool_call_traces = (
+            self._merge_tool_traces(
+                state.tool_call_traces,
+                extra_tool_traces,
+            )
+        )
+
+        calculation_traces = (
+            state.calculation_traces
+        )
+
+        if (
+            isinstance(
+                error,
+                RuntimePlanExecutorError,
+            )
+            and error.calculation_trace
+            is not None
+        ):
+            existing_ids = {
+                trace.calculation_id
+                for trace
+                in calculation_traces
+            }
+
+            if (
+                error.calculation_trace
+                .calculation_id
+                not in existing_ids
+            ):
+                calculation_traces += (
+                    error.calculation_trace,
+                )
+
+        error_message = str(error)
+
+        if not error_message:
+            error_message = (
+                error.__class__.__name__
+            )
+
+        error_message = (
+            error_message[:2000]
+        )
+
+        error_record = AgentErrorRecord(
+            stage=stage,
+            error_type=(
+                error.__class__.__name__
+            ),
+            message=error_message,
+            retryable=False,
+            occurred_at=now,
+        )
+
+        span = NodeSpan(
+            span_id=(
+                self.id_factory.new_id(
+                    "span"
+                )
+            ),
+            node_name="handle_failure",
+            attempt=1,
+            status="completed",
+            input_summary={
+                "error_type": (
+                    error
+                    .__class__.__name__
+                ),
+                "stage": stage,
+            },
+            output_summary={
+                "final_status": (
+                    final_status
+                ),
+                "stop_reason": (
+                    stop_reason
+                ),
+            },
+            started_at=now,
+            completed_at=now,
+            latency_ms=0.0,
+            checkpoint_revision=(
+                state.checkpoint_revision
+            ),
+            error_type=None,
+            error_message=None,
+        )
+
+        retry_increment = max(
+            len(extra_tool_traces) - 1,
+            0,
+        )
+
+        return self._replace_state(
+            state,
+            status=final_status,
+            stop_reason=stop_reason,
+            answer=None,
+            pending_human_review=False,
+            human_review_reason=None,
+            tool_call_traces=(
+                tool_call_traces
+            ),
+            calculation_traces=(
+                calculation_traces
+            ),
+            retry_count=(
+                state.retry_count
+                + retry_increment
+            ),
+            errors=(
+                state.errors
+                + (
+                    error_record,
+                )
+            ),
+            node_spans=(
+                state.node_spans
+                + (
+                    span,
+                )
+            ),
+            step_count=min(
+                state.step_count + 1,
+                state.max_steps,
+            ),
+            current_node=(
+                "handle_failure"
+            ),
+            next_node="finish",
+            completed_at=now,
+            updated_at=now,
+        )
 
     @staticmethod
-    def _replace_state(
+    def _classify_failure(
+        error: Exception,
+    ) -> tuple[
+        str,
+        str,
+    ]:
+        message = str(error)
+
+        if "max_steps" in message:
+            return (
+                "max_steps_exceeded",
+                "failed",
+            )
+
+        if isinstance(
+            error,
+            RuntimeEvidenceError,
+        ):
+            return (
+                "insufficient_evidence",
+                "refused",
+            )
+
+        if (
+            isinstance(
+                error,
+                RuntimePlanExecutorError,
+            )
+            and (
+                "没有返回可用"
+                in message
+            )
+        ):
+            return (
+                "insufficient_evidence",
+                "refused",
+            )
+
+        if (
+            isinstance(
+                error,
+                RuntimePlanExecutorError,
+            )
+            and (
+                error.calculation_trace
+                is not None
+                or "Calculation 领域执行失败"
+                in message
+            )
+        ):
+            return (
+                "calculation_failed",
+                "failed",
+            )
+
+        if isinstance(
+            error,
+            ToolExecutionFailedError,
+        ):
+            if any(
+                trace.status == "timed_out"
+                for trace
+                in error.traces
+            ):
+                return (
+                    "tool_timeout",
+                    "failed",
+                )
+
+            return (
+                "tool_failure",
+                "failed",
+            )
+
+        if isinstance(
+            error,
+            ToolRegistryError,
+        ):
+            return (
+                "tool_failure",
+                "failed",
+            )
+
+        if isinstance(
+            error,
+            RuntimeAnswerGenerationError,
+        ):
+            return (
+                "internal_error",
+                "failed",
+            )
+
+        return (
+            "internal_error",
+            "failed",
+        )
+
+    @staticmethod
+    def _failure_stage(
+        error: Exception,
+    ) -> str:
+        if isinstance(
+            error,
+            RuntimeEvidenceError,
+        ):
+            return "verify_evidence"
+
+        if isinstance(
+            error,
+            RuntimeAnswerGenerationError,
+        ):
+            return "generate_answer"
+
+        return "execute_plan"
+
+    def _persist_checkpoint(
+        self,
         state: AgentState,
-        **updates: object,
     ) -> AgentState:
-        payload = state.model_dump(
-            mode="python"
+        if self.checkpoint_store is None:
+            return state
+
+        record = (
+            self.checkpoint_store.save(
+                state,
+                expected_revision=(
+                    state
+                    .checkpoint_revision
+                ),
+            )
         )
 
-        payload.update(
-            updates
+        return record.state
+
+    def _save_trajectory(
+        self,
+        state: AgentState,
+    ) -> None:
+        if self.trajectory_store is None:
+            return
+
+        trajectory = (
+            self._build_trajectory(
+                state
+            )
         )
 
-        return AgentState.model_validate(
-            payload
+        self.trajectory_store.save(
+            trajectory
         )
 
-    # ========================================================
-    # Node Span
-    # ========================================================
+    @staticmethod
+    def _build_trajectory(
+        state: AgentState,
+    ) -> AgentTrajectory:
+        if (
+            state.status
+            not in {
+                "completed",
+                "refused",
+                "failed",
+            }
+        ):
+            raise AgentRuntimeError(
+                "只有终止状态才能保存 Trajectory"
+            )
+
+        if state.completed_at is None:
+            raise AgentRuntimeError(
+                "终止状态缺少 completed_at"
+            )
+
+        latency_ms = max(
+            (
+                state.completed_at
+                - state.started_at
+            )
+            .total_seconds()
+            * 1000.0,
+            0.0,
+        )
+
+        return AgentTrajectory(
+            request_id=state.request_id,
+            trace_id=state.trace_id,
+            run_id=state.run_id,
+            thread_id=state.thread_id,
+            query=state.query,
+            intent=state.intent,
+            planner_version=(
+                state.planner_version
+            ),
+            retriever_version=(
+                state.retriever_version
+            ),
+            calculator_version=(
+                state.calculator_version
+            ),
+            generator_version=(
+                state.generator_version
+            ),
+            prompt_version=(
+                state.prompt_version
+            ),
+            prompt_sha256=(
+                state.prompt_sha256
+            ),
+            model_name=state.model_name,
+            parsed_query=(
+                state.parsed_query
+            ),
+            runtime_plan=(
+                state.runtime_plan
+            ),
+            node_spans=(
+                state.node_spans
+            ),
+            tool_call_traces=(
+                state.tool_call_traces
+            ),
+            retrieval_traces=(
+                state.retrieval_traces
+            ),
+            calculation_traces=(
+                state.calculation_traces
+            ),
+            retrieved_documents=(
+                state.retrieved_documents
+            ),
+            resolved_fact_ids=(
+                state.resolved_fact_ids
+            ),
+            evidence_ids=(
+                state.evidence_ids
+            ),
+            calculation_ids=(
+                state.calculation_ids
+            ),
+            citations=state.citations,
+            errors=state.errors,
+            answer=state.answer,
+            input_tokens=(
+                state.input_tokens
+            ),
+            output_tokens=(
+                state.output_tokens
+            ),
+            estimated_cost=(
+                state.estimated_cost
+            ),
+            started_at=(
+                state.started_at
+            ),
+            completed_at=(
+                state.completed_at
+            ),
+            latency_ms=latency_ms,
+            final_status=state.status,
+            stop_reason=(
+                state.stop_reason
+            ),
+        )
+
+    @staticmethod
+    def _merge_tool_traces(
+        existing: tuple,
+        incoming: tuple,
+    ) -> tuple:
+        result = list(existing)
+
+        known_ids = {
+            trace.tool_call_id
+            for trace in existing
+        }
+
+        for trace in incoming:
+            if (
+                trace.tool_call_id
+                in known_ids
+            ):
+                continue
+
+            result.append(trace)
+            known_ids.add(
+                trace.tool_call_id
+            )
+
+        return tuple(result)
+
+    def _require_execution_services(
+        self,
+    ) -> None:
+        missing: list[str] = []
+
+        if self.plan_executor is None:
+            missing.append(
+                "plan_executor"
+            )
+
+        if self.verifier is None:
+            missing.append(
+                "verifier"
+            )
+
+        if self.answer_generator is None:
+            missing.append(
+                "answer_generator"
+            )
+
+        if missing:
+            raise AgentRuntimeError(
+                "AgentRuntime 缺少完整执行组件："
+                f"{missing}"
+            )
 
     def _build_completed_span(
         self,
@@ -909,15 +1246,6 @@ class AgentRuntime:
         timer_start: float,
         checkpoint_revision: int,
     ) -> NodeSpan:
-        latency_ms = max(
-            (
-                perf_counter()
-                - timer_start
-            )
-            * 1000,
-            0.0,
-        )
-
         return NodeSpan(
             span_id=(
                 self.id_factory.new_id(
@@ -933,35 +1261,22 @@ class AgentRuntime:
             output_summary=(
                 output_summary
             ),
-            started_at=(
-                started_at
+            started_at=started_at,
+            completed_at=completed_at,
+            latency_ms=max(
+                (
+                    perf_counter()
+                    - timer_start
+                )
+                * 1000.0,
+                0.0,
             ),
-            completed_at=(
-                completed_at
-            ),
-            latency_ms=(
-                latency_ms
-            ),
-
-            # =================================================
-            # 【重点理解】
-            #
-            # 8A 还没有接 CheckpointStore，
-            # 所以这里仍然是初始 revision。
-            #
-            # 8D 会正式更新它。
-            # =================================================
-
             checkpoint_revision=(
                 checkpoint_revision
             ),
             error_type=None,
             error_message=None,
         )
-
-    # ========================================================
-    # Guards
-    # ========================================================
 
     @staticmethod
     def _require_parsed_query(
@@ -995,7 +1310,7 @@ class AgentRuntime:
     def _blocking_missing_fields(
         parsed_query: ParsedFinancialQuery,
     ) -> tuple[str, ...]:
-        blocking_names = {
+        required = {
             "company_ids",
             "years",
             "report_ids",
@@ -1005,6 +1320,20 @@ class AgentRuntime:
             field_name
             for field_name
             in parsed_query.missing_fields
-            if field_name
-            in blocking_names
+            if field_name in required
+        )
+
+    @staticmethod
+    def _replace_state(
+        state: AgentState,
+        **updates: object,
+    ) -> AgentState:
+        payload = state.model_dump(
+            mode="python"
+        )
+
+        payload.update(updates)
+
+        return AgentState.model_validate(
+            payload
         )
