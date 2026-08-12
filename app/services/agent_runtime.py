@@ -39,6 +39,7 @@ from app.services.tool_registry import (
     ToolRegistryError,
 )
 from app.services.trajectory_store import (
+    TrajectoryAlreadyExistsError,
     TrajectoryStore,
 )
 
@@ -152,6 +153,13 @@ def _unique_in_order(
     return tuple(result)
 
 
+_TERMINAL_STATUSES = {
+    "completed",
+    "refused",
+    "failed",
+}
+
+
 @dataclass(
     frozen=True,
     slots=True,
@@ -187,11 +195,9 @@ class AgentRuntime:
         default_factory=UTCClock
     )
 
-    id_factory: RuntimeIdFactory = (
-        field(
-            default_factory=(
-                UUIDRuntimeIdFactory
-            )
+    id_factory: RuntimeIdFactory = field(
+        default_factory=(
+            UUIDRuntimeIdFactory
         )
     )
 
@@ -241,8 +247,6 @@ class AgentRuntime:
             updated_at=now,
         )
 
-    # prepare 保持 8A 语义：
-    # 只执行 parse -> route -> plan。
     def prepare(
         self,
         *,
@@ -326,7 +330,6 @@ class AgentRuntime:
             state
         )
 
-    # 完整 Framework-independent Runtime 入口。
     def run(
         self,
         *,
@@ -337,6 +340,8 @@ class AgentRuntime:
         thread_id: str | None = None,
         max_steps: int = 32,
     ) -> AgentState:
+        """启动一次新的 Agent 运行。"""
+
         state = self.prepare(
             query=query,
             request_id=request_id,
@@ -346,50 +351,301 @@ class AgentRuntime:
             max_steps=max_steps,
         )
 
-        if state.status in {
-            "completed",
-            "refused",
-            "failed",
-        }:
-            self._save_trajectory(
-                state
-            )
-            return state
+        return self._continue_from_state(
+            state
+        )
 
-        if (
-            state.status
-            == "awaiting_human"
-        ):
-            return state
+    def resume(
+        self,
+        *,
+        run_id: str,
+        thread_id: str,
+    ) -> AgentState:
+        """从最新领域 Checkpoint 恢复已有运行。"""
 
-        try:
-            self._require_execution_services()
-
-            assert (
-                self.plan_executor
-                is not None
+        if self.checkpoint_store is None:
+            raise AgentRuntimeError(
+                "Runtime resume 需要配置 "
+                "checkpoint_store"
             )
 
-            assert self.verifier is not None
-
-            assert (
-                self.answer_generator
-                is not None
+        record = (
+            self.checkpoint_store
+            .load_latest(
+                run_id=run_id,
+                thread_id=thread_id,
             )
+        )
 
-            while (
-                state.runtime_plan
-                is not None
-                and state.current_step
-                < len(
-                    state.runtime_plan
-                    .plan.steps
-                )
+        state = record.state
+
+        return self._continue_from_state(
+            state
+        )
+
+    def _continue_from_state(
+        self,
+        state: AgentState,
+    ) -> AgentState:
+        """根据 AgentState.next_node 从断点继续运行。"""
+
+        while True:
+            if (
+                state.status
+                in _TERMINAL_STATUSES
             ):
-                state = (
-                    self.plan_executor
-                    .execute_next_step(
+                self._save_trajectory(
+                    state
+                )
+
+                return state
+
+            if (
+                state.status
+                == "awaiting_human"
+            ):
+                return state
+
+            try:
+                if (
+                    state.step_count
+                    >= state.max_steps
+                ):
+                    raise AgentRuntimeError(
+                        "Runtime 已达到 max_steps"
+                    )
+
+                # route_intent 的结果可能已经保存成
+                # 一个独立 Checkpoint。
+                #
+                # 因此恢复时需要再次执行 route 后的
+                # 状态判断，而不是直接进入 Planner。
+                if state.status == "routed":
+                    if (
+                        state.intent
+                        == "unsupported"
+                    ):
+                        state = (
+                            self._mark_refused(
+                                state
+                            )
+                        )
+
+                        state = (
+                            self._persist_checkpoint(
+                                state
+                            )
+                        )
+
+                        continue
+
+                    parsed_query = (
+                        self._require_parsed_query(
+                            state
+                        )
+                    )
+
+                    missing_fields = (
+                        self
+                        ._blocking_missing_fields(
+                            parsed_query
+                        )
+                    )
+
+                    if missing_fields:
+                        state = (
+                            self
+                            ._mark_awaiting_human(
+                                state,
+                                blocking_missing_fields=(
+                                    missing_fields
+                                ),
+                            )
+                        )
+
+                        state = (
+                            self
+                            ._persist_checkpoint(
+                                state
+                            )
+                        )
+
+                        return state
+
+                next_node = (
+                    state.next_node
+                )
+
+                if next_node == "parse_query":
+                    state = (
+                        self._run_parse_node(
+                            state
+                        )
+                    )
+
+                    state = (
+                        self._persist_checkpoint(
+                            state
+                        )
+                    )
+
+                    continue
+
+                if next_node == "route_intent":
+                    state = (
+                        self._run_route_node(
+                            state
+                        )
+                    )
+
+                    state = (
+                        self._persist_checkpoint(
+                            state
+                        )
+                    )
+
+                    continue
+
+                if next_node == "create_plan":
+                    state = (
+                        self._run_plan_node(
+                            state
+                        )
+                    )
+
+                    state = (
+                        self._persist_checkpoint(
+                            state
+                        )
+                    )
+
+                    continue
+
+                if next_node == "execute_plan":
+                    self._require_execution_services()
+
+                    assert (
+                        self.plan_executor
+                        is not None
+                    )
+
+                    state = (
+                        self.plan_executor
+                        .execute_next_step(
+                            state
+                        )
+                    )
+
+                    state = (
+                        self._persist_checkpoint(
+                            state
+                        )
+                    )
+
+                    continue
+
+                if (
+                    next_node
+                    == "verify_evidence"
+                ):
+                    self._require_execution_services()
+
+                    assert (
+                        self.verifier
+                        is not None
+                    )
+
+                    state = (
+                        self.verifier.verify(
+                            state
+                        )
+                    )
+
+                    state = (
+                        self._persist_checkpoint(
+                            state
+                        )
+                    )
+
+                    continue
+
+                if (
+                    next_node
+                    == "generate_answer"
+                ):
+                    self._require_execution_services()
+
+                    assert (
+                        self.answer_generator
+                        is not None
+                    )
+
+                    state = (
+                        self.answer_generator
+                        .generate(
+                            state
+                        )
+                    )
+
+                    state = (
+                        self._persist_checkpoint(
+                            state
+                        )
+                    )
+
+                    continue
+
+                if (
+                    next_node
+                    == "await_human"
+                ):
+                    if (
+                        state.status
+                        != "awaiting_human"
+                    ):
+                        raise AgentRuntimeError(
+                            "next_node=await_human "
+                            "但 State 不是 "
+                            "awaiting_human"
+                        )
+
+                    return state
+
+                if next_node == "finish":
+                    if (
+                        state.status
+                        not in _TERMINAL_STATUSES
+                    ):
+                        raise AgentRuntimeError(
+                            "非终止状态不能直接进入 "
+                            "finish"
+                        )
+
+                    self._save_trajectory(
                         state
+                    )
+
+                    return state
+
+                if (
+                    next_node
+                    == "handle_failure"
+                ):
+                    raise AgentRuntimeError(
+                        "无法从未完成的 "
+                        "handle_failure 节点恢复"
+                    )
+
+                raise AgentRuntimeError(
+                    "Runtime 遇到未知 next_node："
+                    f"{next_node}"
+                )
+
+            except Exception as exc:
+                state = (
+                    self._handle_failure(
+                        state=state,
+                        error=exc,
                     )
                 )
 
@@ -398,46 +654,6 @@ class AgentRuntime:
                         state
                     )
                 )
-
-            state = self.verifier.verify(
-                state
-            )
-
-            state = self._persist_checkpoint(
-                state
-            )
-
-            state = (
-                self.answer_generator
-                .generate(
-                    state
-                )
-            )
-
-            state = self._persist_checkpoint(
-                state
-            )
-
-        except Exception as exc:
-            state = self._handle_failure(
-                state=state,
-                error=exc,
-            )
-
-            state = self._persist_checkpoint(
-                state
-            )
-
-        if state.status in {
-            "completed",
-            "refused",
-            "failed",
-        }:
-            self._save_trajectory(
-                state
-            )
-
-        return state
 
     def _run_parse_node(
         self,
@@ -489,8 +705,7 @@ class AgentRuntime:
                 completed_at=completed_at,
                 timer_start=timer_start,
                 checkpoint_revision=(
-                    state
-                    .checkpoint_revision
+                    state.checkpoint_revision
                 ),
             )
         )
@@ -577,8 +792,7 @@ class AgentRuntime:
                 completed_at=completed_at,
                 timer_start=timer_start,
                 checkpoint_revision=(
-                    state
-                    .checkpoint_revision
+                    state.checkpoint_revision
                 ),
             )
         )
@@ -626,9 +840,7 @@ class AgentRuntime:
 
         runtime_plan = (
             self.planner.create_plan(
-                parsed_query=(
-                    parsed_query
-                ),
+                parsed_query=parsed_query,
                 intent=intent,
             )
         )
@@ -663,8 +875,7 @@ class AgentRuntime:
                 completed_at=completed_at,
                 timer_start=timer_start,
                 checkpoint_revision=(
-                    state
-                    .checkpoint_revision
+                    state.checkpoint_revision
                 ),
             )
         )
@@ -736,7 +947,6 @@ class AgentRuntime:
             updated_at=now,
         )
 
-    # 将执行异常转换为可审计的终止状态。
     def _handle_failure(
         self,
         *,
@@ -960,8 +1170,10 @@ class AgentRuntime:
             and (
                 error.calculation_trace
                 is not None
-                or "Calculation 领域执行失败"
-                in message
+                or (
+                    "Calculation 领域执行失败"
+                    in message
+                )
             )
         ):
             return (
@@ -1040,8 +1252,7 @@ class AgentRuntime:
             self.checkpoint_store.save(
                 state,
                 expected_revision=(
-                    state
-                    .checkpoint_revision
+                    state.checkpoint_revision
                 ),
             )
         )
@@ -1052,6 +1263,8 @@ class AgentRuntime:
         self,
         state: AgentState,
     ) -> None:
+        """幂等完成一次 Runtime Trajectory finalization。"""
+
         if self.trajectory_store is None:
             return
 
@@ -1061,9 +1274,17 @@ class AgentRuntime:
             )
         )
 
-        self.trajectory_store.save(
-            trajectory
-        )
+        try:
+            self.trajectory_store.save(
+                trajectory
+            )
+
+        except (
+            TrajectoryAlreadyExistsError
+        ):
+            # Store 本身仍然禁止覆盖。
+            # Runtime finalize 则允许重复调用。
+            return
 
     @staticmethod
     def _build_trajectory(
@@ -1071,11 +1292,7 @@ class AgentRuntime:
     ) -> AgentTrajectory:
         if (
             state.status
-            not in {
-                "completed",
-                "refused",
-                "failed",
-            }
+            not in _TERMINAL_STATUSES
         ):
             raise AgentRuntimeError(
                 "只有终止状态才能保存 Trajectory"
@@ -1197,6 +1414,7 @@ class AgentRuntime:
                 continue
 
             result.append(trace)
+
             known_ids.add(
                 trace.tool_call_id
             )
@@ -1332,7 +1550,9 @@ class AgentRuntime:
             mode="python"
         )
 
-        payload.update(updates)
+        payload.update(
+            updates
+        )
 
         return AgentState.model_validate(
             payload
