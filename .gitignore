@@ -5,6 +5,7 @@ __pycache__/
 *.so
 .codemap
 .VSCodeCounter
+
 # Virtual environments
 .venv/
 venv/
@@ -51,6 +52,10 @@ data/processed/pages/
 data/processed/chunks/
 data/processed/indices/
 
+# Runtime evaluation trajectories are reproducible artifacts.
+# Dataset、results 和 summary 保留进 Git，
+# 单次运行产生的完整轨迹不提交。
+data/processed/evaluations/runtime/**/trajectories/
 
 # Temporary experiment artifacts
 tmp/
