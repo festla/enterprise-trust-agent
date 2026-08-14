@@ -235,7 +235,7 @@ class RuntimeEvidenceVerifier:
                 "verify_evidence"
             ),
             next_node=(
-                "generate_answer"
+                "prepare_answer"
             ),
             updated_at=completed_at,
         )
@@ -516,6 +516,11 @@ class RuntimeAnswerGenerator:
                 "AgentState 缺少 intent"
             )
 
+        if state.answer_draft is None:
+            raise RuntimeAnswerGenerationError(
+                "generate_answer 缺少 answer_draft"
+            )
+
         started_at = self.clock.now()
         timer_start = perf_counter()
 
@@ -610,20 +615,29 @@ class RuntimeAnswerGenerator:
         self,
         state: AgentState,
     ) -> AgentAnswer:
-        artifact_ids = (
-            self._final_artifact_ids(
-                state
+        draft = state.answer_draft
+
+        if draft is None:
+            raise RuntimeAnswerGenerationError(
+                "Financial Answer 缺少 AnswerDraft"
             )
-        )
+
+        if draft.draft_type != "financial":
+            raise RuntimeAnswerGenerationError(
+                "Financial Answer 收到了"
+                "非 financial AnswerDraft"
+            )
 
         rendered_items = tuple(
-            self._render_financial_artifact(
-                state=state,
-                artifact_id=artifact_id,
-            )
-            for artifact_id
-            in artifact_ids
+            claim.claim_text
+            for claim in draft.claims
         )
+
+        if not rendered_items:
+            raise RuntimeAnswerGenerationError(
+                "Financial AnswerDraft "
+                "没有可生成的 Claim"
+            )
 
         runtime_plan = state.runtime_plan
 
@@ -671,16 +685,23 @@ class RuntimeAnswerGenerator:
         return AgentAnswer(
             answer_type="financial",
             answer_text=answer_text,
+
+            # 暂时保留 Week6 的全局审计字段，
+            # 避免破坏 AgentState 既有契约。
             supporting_fact_ids=(
                 state.resolved_fact_ids
             ),
+
             supporting_calculation_ids=(
                 state.calculation_ids
             ),
+
             citation_evidence_ids=(
                 state.evidence_ids
             ),
+
             document_citation_ids=(),
+
             confidence=(
                 state.confidence
             ),
@@ -690,63 +711,69 @@ class RuntimeAnswerGenerator:
         self,
         state: AgentState,
     ) -> AgentAnswer:
-        if not state.citations:
+        draft = state.answer_draft
+
+        if draft is None:
             raise RuntimeAnswerGenerationError(
-                "Document Answer 缺少 citation"
+                "Document Answer 缺少 AnswerDraft"
             )
 
-        document_by_chunk_id = {
-            document.chunk_id: document
-            for document
-            in state.retrieved_documents
-        }
+        if draft.draft_type != "document":
+            raise RuntimeAnswerGenerationError(
+                "Document Answer 收到了"
+                "非 document AnswerDraft"
+            )
 
         lines: list[str] = []
 
-        for citation in state.citations:
-            if citation.chunk_id is None:
-                continue
+        citation_ids: list[str] = []
 
-            document = (
-                document_by_chunk_id.get(
-                    citation.chunk_id
-                )
+        for claim in draft.claims:
+            claim_citation_ids = (
+                claim.support.citation_ids
             )
 
-            if document is None:
-                raise (
-                    RuntimeAnswerGenerationError(
-                        "Citation 引用了"
-                        "不存在的 RetrievedDocument："
-                        f"{citation.chunk_id}"
-                    )
+            if not claim_citation_ids:
+                raise RuntimeAnswerGenerationError(
+                    "Document Claim 缺少 citation"
                 )
 
-            text = (
-                document.text
-                .strip()
-                .replace(
-                    "\n",
-                    " ",
+            citation_ids.extend(
+                claim_citation_ids
+            )
+
+            citation_prefix = " ".join(
+                (
+                    f"[{citation_id}]"
+                    for citation_id
+                    in claim_citation_ids
                 )
             )
 
             lines.append(
                 (
-                    f"[{citation.citation_id}] "
-                    f"{text[:500]}"
+                    f"{citation_prefix} "
+                    f"{claim.claim_text}"
                 )
             )
 
         if not lines:
             raise RuntimeAnswerGenerationError(
-                "Document Answer "
-                "没有可用证据文本"
+                "Document AnswerDraft "
+                "没有可用 Claim"
             )
+
+        unique_citation_ids = tuple(
+            dict.fromkeys(
+                citation_ids
+            )
+        )
 
         answer_text = (
             "根据检索到的财报证据：\n"
-            + "\n".join(lines)
+            + "\n".join(
+                lines
+            )
         )
 
         return AgentAnswer(
@@ -755,10 +782,8 @@ class RuntimeAnswerGenerator:
             supporting_fact_ids=(),
             supporting_calculation_ids=(),
             citation_evidence_ids=(),
-            document_citation_ids=tuple(
-                citation.citation_id
-                for citation
-                in state.citations
+            document_citation_ids=(
+                unique_citation_ids
             ),
             confidence=(
                 state.confidence

@@ -42,7 +42,10 @@ from app.services.trajectory_store import (
     TrajectoryAlreadyExistsError,
     TrajectoryStore,
 )
-
+from app.services.runtime_answer_draft import (
+    RuntimeAnswerDraftBuilder,
+    RuntimeAnswerDraftError,
+)
 
 class AgentRuntimeError(
     ValueError
@@ -177,6 +180,10 @@ class AgentRuntime:
 
     verifier: (
         RuntimeEvidenceVerifier | None
+    ) = None
+
+    answer_draft_builder: (
+        RuntimeAnswerDraftBuilder | None
     ) = None
 
     answer_generator: (
@@ -571,6 +578,24 @@ class AgentRuntime:
 
                 if (
                     next_node
+                    == "prepare_answer"
+                ):
+                    state = (
+                        self._run_prepare_answer_node(
+                            state
+                        )
+                    )
+
+                    state = (
+                        self._persist_checkpoint(
+                            state
+                        )
+                    )
+
+                    continue
+
+                if (
+                    next_node
                     == "generate_answer"
                 ):
                     self._require_execution_services()
@@ -902,6 +927,89 @@ class AgentRuntime:
             updated_at=completed_at,
         )
 
+    def _run_prepare_answer_node(
+        self,
+        state: AgentState,
+    ) -> AgentState:
+        if self.answer_draft_builder is None:
+            raise AgentRuntimeError(
+                "prepare_answer 需要配置 "
+                "answer_draft_builder"
+            )
+
+        if state.status != "verifying":
+            raise AgentRuntimeError(
+                "只有 Verifying 状态才能进入 "
+                "prepare_answer"
+            )
+
+        started_at = self.clock.now()
+        timer_start = perf_counter()
+
+        answer_draft = (
+            self.answer_draft_builder.build(
+                state
+            )
+        )
+
+        completed_at = self.clock.now()
+
+        span = self._build_completed_span(
+            node_name="prepare_answer",
+            input_summary={
+                "intent": state.intent,
+                "citation_count": len(
+                    state.citations
+                ),
+                "fact_count": len(
+                    state.resolved_fact_ids
+                ),
+                "calculation_count": len(
+                    state.calculation_ids
+                ),
+            },
+            output_summary={
+                "draft_id": (
+                    answer_draft.draft_id
+                ),
+                "draft_type": (
+                    answer_draft.draft_type
+                ),
+                "claim_count": len(
+                    answer_draft.claims
+                ),
+            },
+            started_at=started_at,
+            completed_at=completed_at,
+            timer_start=timer_start,
+            checkpoint_revision=(
+                state.checkpoint_revision
+            ),
+        )
+
+        return self._replace_state(
+            state,
+            answer_draft=answer_draft,
+
+            status="verifying",
+
+            current_node="prepare_answer",
+            next_node="generate_answer",
+
+            node_spans=(
+                state.node_spans
+                + (
+                    span,
+                )
+            ),
+
+            step_count=(
+                state.step_count + 1
+            ),
+
+            updated_at=completed_at,
+        )
+
     def _mark_refused(
         self,
         state: AgentState,
@@ -1147,6 +1255,15 @@ class AgentRuntime:
                 "refused",
             )
 
+        if isinstance(
+            error,
+            RuntimeAnswerDraftError,
+        ):
+            return (
+                "internal_error",
+                "failed",
+            )
+
         if (
             isinstance(
                 error,
@@ -1238,6 +1355,12 @@ class AgentRuntime:
             RuntimeAnswerGenerationError,
         ):
             return "generate_answer"
+
+        if isinstance(
+            error,
+            RuntimeAnswerDraftError,
+        ):
+            return "prepare_answer"
 
         return "execute_plan"
 
@@ -1370,6 +1493,9 @@ class AgentRuntime:
                 state.calculation_ids
             ),
             citations=state.citations,
+            answer_draft=(
+                state.answer_draft
+            ),
             errors=state.errors,
             answer=state.answer,
             input_tokens=(

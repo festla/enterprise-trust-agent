@@ -25,7 +25,9 @@ from app.schemas.tool_registry import (
     ToolCallTrace,
     ToolExecutionResult,
 )
-
+from app.schemas.trust import (
+    AnswerDraft,
+)
 
 AgentIntent = Literal[
     "financial_fact",
@@ -83,6 +85,7 @@ RuntimeNode = Literal[
     "create_plan",
     "execute_plan",
     "verify_evidence",
+    "prepare_answer",
     "generate_answer",
     "await_human",
     "handle_failure",
@@ -1126,6 +1129,8 @@ class AgentState(BaseModel):
         ...,
     ] = ()
 
+    answer_draft: AnswerDraft | None = None
+
     answer: AgentAnswer | None = None
 
     citations: tuple[
@@ -1697,6 +1702,8 @@ class AgentTrajectory(BaseModel):
         CitationRecord,
         ...,
     ] = ()
+
+    answer_draft: AnswerDraft | None = None
 
     errors: tuple[
         AgentErrorRecord,

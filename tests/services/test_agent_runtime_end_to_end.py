@@ -77,7 +77,9 @@ from app.services.tool_registry import (
 from app.services.trajectory_store import (
     TrajectoryStore,
 )
-
+from app.services.runtime_answer_draft import (
+    RuntimeAnswerDraftBuilder,
+)
 
 class FixedClock:
     def now(
@@ -511,6 +513,12 @@ def _build_runtime(
         id_factory=id_factory,
     )
 
+    answer_draft_builder = (
+        RuntimeAnswerDraftBuilder(
+            registry_bundle=bundle
+        )
+    )
+
     answer_generator = (
         RuntimeAnswerGenerator(
             registry_bundle=bundle,
@@ -537,6 +545,9 @@ def _build_runtime(
             plan_executor
         ),
         verifier=verifier,
+        answer_draft_builder=(
+            answer_draft_builder
+        ),
         answer_generator=(
             answer_generator
         ),
@@ -585,6 +596,30 @@ def test_financial_fact_runs_end_to_end(
     assert state.answer is not None
 
     assert (
+        state.answer_draft
+        is not None
+    )
+
+    assert (
+        state.answer_draft.draft_type
+        == "financial"
+    )
+
+    assert (
+        len(
+            state.answer_draft.claims
+        )
+        == 1
+    )
+
+    assert (
+        state.answer_draft
+        .claims[0]
+        .claim_type
+        == "financial_fact"
+    )
+
+    assert (
         state.answer.answer_type
         == "financial"
     )
@@ -610,9 +645,32 @@ def test_financial_fact_runs_end_to_end(
         )
     )
 
+    node_names = tuple(
+        span.node_name
+        for span
+        in state.node_spans
+    )
+
+    assert (
+        "prepare_answer"
+        in node_names
+    )
+
     assert (
         trajectory.final_status
         == "completed"
+    )
+
+    assert (
+        trajectory.answer_draft
+        is not None
+    )
+
+    assert (
+        trajectory
+        .answer_draft
+        .draft_id
+        == state.answer_draft.draft_id
     )
 
     replay = (

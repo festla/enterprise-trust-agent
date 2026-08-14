@@ -95,7 +95,9 @@ from app.services.tool_registry import (
 from app.services.trajectory_store import (
     TrajectoryStore,
 )
-
+from app.services.runtime_answer_draft import (
+    RuntimeAnswerDraftBuilder,
+)
 
 class RuntimeEvalError(
     ValueError
@@ -689,6 +691,11 @@ def build_runtime_eval_environment(
         ),
         verifier=(
             RuntimeEvidenceVerifier(
+                registry_bundle=bundle
+            )
+        ),
+        answer_draft_builder=(
+            RuntimeAnswerDraftBuilder(
                 registry_bundle=bundle
             )
         ),

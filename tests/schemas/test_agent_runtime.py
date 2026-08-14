@@ -25,7 +25,11 @@ from app.schemas.enums import (
 from app.schemas.tool_registry import (
     DocumentEvidenceQuery,
 )
-
+from app.schemas.trust import (
+    AnswerDraft,
+    Claim,
+    ClaimSupport,
+)
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -281,6 +285,33 @@ def _build_completed_state(
         completed_at=now,
     )
 
+def _build_answer_draft() -> AnswerDraft:
+    return AnswerDraft(
+        draft_id="draft_run_1",
+        draft_type="financial",
+        claims=(
+            Claim(
+                claim_id=(
+                    "claim_revenue_2024"
+                ),
+                claim_type="financial_fact",
+                claim_text=(
+                    "美的集团2024年营业收入为"
+                    "407149600000元。"
+                ),
+                support=ClaimSupport(
+                    fact_ids=(
+                        "fact_midea_group_"
+                        "2024_revenue",
+                    ),
+                    citation_ids=(
+                        "citation_1",
+                    ),
+                ),
+                confidence=1.0,
+            ),
+        ),
+    )
 
 def test_parsed_query_rejects_duplicate_ids() -> None:
     with pytest.raises(
@@ -570,4 +601,61 @@ def test_completed_state_and_trajectory_are_valid() -> None:
     assert (
         trajectory.answer
         == state.answer
+    )
+
+def test_agent_state_accepts_answer_draft() -> None:
+    state = _build_completed_state()
+
+    payload = state.model_dump(
+        mode="python"
+    )
+
+    payload["answer_draft"] = (
+        _build_answer_draft()
+    )
+
+    updated_state = (
+        AgentState.model_validate(
+            payload
+        )
+    )
+
+    assert (
+        updated_state.answer_draft
+        is not None
+    )
+
+    assert (
+        updated_state
+        .answer_draft
+        .claims[0]
+        .claim_id
+        == "claim_revenue_2024"
+    )
+
+def test_node_span_accepts_prepare_answer() -> None:
+    now = _now()
+
+    span = NodeSpan(
+        span_id="span_prepare_answer",
+        node_name="prepare_answer",
+        attempt=1,
+        status="completed",
+        input_summary={
+            "citation_count": 1,
+        },
+        output_summary={
+            "claim_count": 1,
+        },
+        started_at=now,
+        completed_at=now,
+        latency_ms=0.0,
+        checkpoint_revision=1,
+        error_type=None,
+        error_message=None,
+    )
+
+    assert (
+        span.node_name
+        == "prepare_answer"
     )

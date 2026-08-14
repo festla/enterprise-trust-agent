@@ -20,8 +20,17 @@ from app.schemas.metric import (
 from app.schemas.report import (
     Report,
 )
+from app.schemas.agent_runtime import (
+    AgentState,
+)
+from app.schemas.trust import (
+    AnswerDraft,
+    Claim,
+    ClaimSupport,
+)
 from app.services.agent_runtime import (
     AgentRuntime,
+    AgentRuntimeError,
 )
 from app.services.registry import (
     RegistryBundle,
@@ -32,10 +41,16 @@ from app.services.runtime_intent_router import (
 from app.services.runtime_planner import (
     RuntimePlanner,
 )
+from app.services.runtime_answer_draft import (
+    RuntimeAnswerDraftBuilder,
+)
 from app.services.runtime_query_parser import (
     RuntimeQueryParser,
 )
+from dataclasses import replace
+from unittest.mock import MagicMock
 
+import pytest
 
 # ============================================================
 # 固定 Clock：
@@ -194,7 +209,61 @@ def _build_runtime(
         ),
     )
 
+def _build_test_answer_draft(
+) -> AnswerDraft:
+    return AnswerDraft(
+        draft_id="draft_run_1",
+        draft_type="financial",
+        claims=(
+            Claim(
+                claim_id=(
+                    "claim_test_revenue"
+                ),
+                claim_type=(
+                    "financial_fact"
+                ),
+                claim_text=(
+                    "美的集团2024年"
+                    "营业收入为测试值。"
+                ),
+                support=ClaimSupport(
+                    fact_ids=(
+                        "fact_test_revenue",
+                    ),
+                    citation_ids=(
+                        "citation_1",
+                    ),
+                ),
+                confidence=1.0,
+            ),
+        ),
+    )
 
+def _build_verifying_state(
+) -> AgentState:
+    now = FixedClock().now()
+
+    return AgentState(
+        request_id="request_1",
+        trace_id="trace_1",
+        run_id="run_1",
+        thread_id="thread_1",
+
+        query=(
+            "美的集团2024年"
+            "营业收入是多少？"
+        ),
+
+        intent="financial_fact",
+
+        status="verifying",
+
+        current_node="verify_evidence",
+        next_node="prepare_answer",
+
+        started_at=now,
+        updated_at=now,
+    )
 # ============================================================
 # 初始状态：
 #
@@ -636,3 +705,84 @@ def test_prepare_preserves_caller_thread_id(
         state.thread_id
         == "thread_demo_001"
     )
+
+
+def test_prepare_answer_node_stores_draft(
+) -> None:
+    builder = MagicMock(
+        spec=RuntimeAnswerDraftBuilder
+    )
+
+    builder.build.return_value = (
+        _build_test_answer_draft()
+    )
+
+    runtime = replace(
+        _build_runtime(),
+        answer_draft_builder=builder,
+    )
+
+    state = (
+        _build_verifying_state()
+    )
+
+    updated_state = (
+        runtime
+        ._run_prepare_answer_node(
+            state
+        )
+    )
+
+    builder.build.assert_called_once_with(
+        state
+    )
+
+    assert (
+        updated_state.answer_draft
+        is not None
+    )
+
+    assert (
+        updated_state
+        .answer_draft
+        .draft_id
+        == "draft_run_1"
+    )
+
+    assert (
+        updated_state.current_node
+        == "prepare_answer"
+    )
+
+    assert (
+        updated_state.next_node
+        == "generate_answer"
+    )
+
+    assert (
+        updated_state.step_count
+        == state.step_count + 1
+    )
+
+    assert (
+        updated_state
+        .node_spans[-1]
+        .node_name
+        == "prepare_answer"
+    )
+
+def test_prepare_answer_node_requires_builder(
+) -> None:
+    runtime = _build_runtime()
+
+    state = (
+        _build_verifying_state()
+    )
+
+    with pytest.raises(
+        AgentRuntimeError,
+        match="answer_draft_builder",
+    ):
+        runtime._run_prepare_answer_node(
+            state
+        )

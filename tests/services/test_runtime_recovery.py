@@ -73,7 +73,9 @@ from app.services.tool_registry import (
 from app.services.trajectory_store import (
     TrajectoryStore,
 )
-
+from app.services.runtime_answer_draft import (
+    RuntimeAnswerDraftBuilder,
+)
 
 class FixedClock:
     def now(
@@ -487,6 +489,11 @@ def _build_runtime(
                 registry_bundle=bundle,
                 clock=clock,
                 id_factory=id_factory,
+            )
+        ),
+        answer_draft_builder=(
+            RuntimeAnswerDraftBuilder(
+                registry_bundle=bundle
             )
         ),
         answer_generator=(
@@ -1024,6 +1031,7 @@ def test_recovered_calculation_trajectory_can_be_replayed(
         "execute_plan",
         "execute_plan",
         "verify_evidence",
+        "prepare_answer",
         "generate_answer",
     )
 

@@ -453,3 +453,100 @@ class PolicyDecision(BaseModel):
             )
 
         return self
+
+
+DraftType = Literal[
+    "financial",
+    "document",
+]
+
+
+_DRAFT_ID_PATTERN = (
+    r"^draft_[a-z0-9_]+$"
+)
+
+class AnswerDraft(BaseModel):
+    """进入可信校验之前的结构化回答草稿。"""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        str_strip_whitespace=True,
+    )
+
+    draft_id: str = Field(
+        pattern=_DRAFT_ID_PATTERN,
+    )
+
+    draft_type: DraftType
+
+    claims: tuple[
+        Claim,
+        ...
+    ]
+
+    uncertainty_notes: tuple[
+        str,
+        ...
+    ] = ()
+
+    limitation_notes: tuple[
+        str,
+        ...
+    ] = ()
+
+    @field_validator("claims")
+    @classmethod
+    def validate_claims(
+        cls,
+        values: tuple[
+            Claim,
+            ...
+        ],
+    ) -> tuple[
+        Claim,
+        ...
+    ]:
+        if not values:
+            raise ValueError(
+                "AnswerDraft 至少需要一条 Claim"
+            )
+
+        claim_ids = tuple(
+            claim.claim_id
+            for claim in values
+        )
+
+        if (
+            len(claim_ids)
+            != len(set(claim_ids))
+        ):
+            raise ValueError(
+                "AnswerDraft 不能包含重复 claim_id"
+            )
+
+        return values
+
+    @field_validator(
+        "uncertainty_notes",
+        "limitation_notes",
+    )
+    @classmethod
+    def validate_notes(
+        cls,
+        values: tuple[str, ...],
+    ) -> tuple[str, ...]:
+        if len(values) != len(set(values)):
+            raise ValueError(
+                "说明字段不能包含重复内容"
+            )
+
+        if any(
+            not value.strip()
+            for value in values
+        ):
+            raise ValueError(
+                "说明字段不能包含空字符串"
+            )
+
+        return values

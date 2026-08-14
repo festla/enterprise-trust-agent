@@ -3,6 +3,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas.trust import (
+    AnswerDraft,
     Claim,
     ClaimSupport,
     HumanReviewRequest,
@@ -301,3 +302,100 @@ def test_policy_rejects_mismatched_review_risk() -> None:
             verification_passed=True,
             human_review=review,
         )
+
+
+def test_answer_draft_can_be_created() -> None:
+    claim = Claim(
+        claim_id="claim_revenue_2024",
+        claim_type="financial_fact",
+        claim_text=(
+            "美的集团2024年营业收入为"
+            "407149600000元。"
+        ),
+        support=ClaimSupport(
+            fact_ids=(
+                "fact_midea_2024_revenue",
+            ),
+            citation_ids=(
+                "citation_1",
+            ),
+        ),
+    )
+
+    draft = AnswerDraft(
+        draft_id="draft_revenue_2024",
+        draft_type="financial",
+        claims=(claim,),
+    )
+
+    assert draft.draft_type == "financial"
+    assert len(draft.claims) == 1
+
+
+def test_answer_draft_rejects_empty_claims() -> None:
+    with pytest.raises(
+        ValidationError
+    ):
+        AnswerDraft(
+            draft_id="draft_empty",
+            draft_type="financial",
+            claims=(),
+        )
+
+
+def test_answer_draft_rejects_duplicate_claim_ids() -> None:
+    claim = Claim(
+        claim_id="claim_revenue_2024",
+        claim_type="financial_fact",
+        claim_text="测试结论",
+        support=ClaimSupport(
+            fact_ids=(
+                "fact_midea_2024_revenue",
+            ),
+        ),
+    )
+
+    with pytest.raises(
+        ValidationError
+    ):
+        AnswerDraft(
+            draft_id="draft_duplicate",
+            draft_type="financial",
+            claims=(
+                claim,
+                claim,
+            ),
+        )
+
+
+def test_answer_draft_accepts_uncertainty_and_limitation() -> None:
+    claim = Claim(
+        claim_id="claim_document_risk",
+        claim_type="document_analysis",
+        claim_text="年报披露了相关经营风险。",
+        support=ClaimSupport(
+            citation_ids=(
+                "citation_1",
+            ),
+        ),
+    )
+
+    draft = AnswerDraft(
+        draft_id="draft_document_risk",
+        draft_type="document",
+        claims=(claim,),
+        uncertainty_notes=(
+            "证据仅来自公开年报披露。",
+        ),
+        limitation_notes=(
+            "不构成投资建议。",
+        ),
+    )
+
+    assert len(
+        draft.uncertainty_notes
+    ) == 1
+
+    assert len(
+        draft.limitation_notes
+    ) == 1
