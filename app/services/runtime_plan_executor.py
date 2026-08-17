@@ -46,6 +46,10 @@ from app.services.registry import (
 from app.services.runtime_access_control import (
     RuntimeAccessController,
 )
+from app.services.runtime_prompt_injection import (
+    InjectionDetectionResult,
+    RuntimePromptInjectionDetector,
+)
 
 class RuntimePlanExecutorError(
     ValueError
@@ -73,6 +77,50 @@ class RuntimePlanExecutorError(
             calculation_trace
         )
 
+class RuntimePromptInjectionDetectedError(
+    RuntimePlanExecutorError
+):
+    """Retrieved Document 中检测到 Prompt Injection。"""
+
+    def __init__(
+        self,
+        *,
+        chunk_id: str,
+        document_id: str,
+        detection_result: (
+            InjectionDetectionResult
+        ),
+        execution_result: (
+            ToolExecutionResult
+        ),
+    ) -> None:
+        matched_rules = ",".join(
+            detection_result
+            .matched_rule_ids
+        )
+
+        super().__init__(
+            (
+                "检索文档检测到 Prompt Injection："
+                f"chunk_id={chunk_id}; "
+                f"severity="
+                f"{detection_result.severity}; "
+                f"rules={matched_rules}"
+            ),
+            execution_result=(
+                execution_result
+            ),
+        )
+
+        self.chunk_id = chunk_id
+
+        self.document_id = (
+            document_id
+        )
+
+        self.detection_result = (
+            detection_result
+        )
 
 class ToolExecutorProvider(
     Protocol
@@ -208,6 +256,14 @@ class RuntimePlanExecutor:
         )
     )
 
+    prompt_injection_detector: (
+        RuntimePromptInjectionDetector
+    ) = field(
+        default_factory=(
+            RuntimePromptInjectionDetector
+        )
+    )
+
     registry_bundle: (
         RegistryBundle | None
     ) = None
@@ -303,6 +359,75 @@ class RuntimePlanExecutor:
             )
 
         return effective_permissions
+
+    def _scan_retrieved_documents(
+        self,
+        *,
+        documents: tuple[
+            RetrievedDocument,
+            ...
+        ],
+        execution_result: (
+            ToolExecutionResult
+        ),
+    ) -> None:
+        """扫描 Tool 返回的所有不可信文档内容。
+
+        RetrievedDocument 属于外部数据。
+
+        在它进入：
+            runtime_refs
+            retrieved_documents
+            verify_evidence
+            AnswerDraft
+
+        之前，必须先经过 Prompt Injection 检测。
+        """
+
+        for document in documents:
+            detection_result = (
+                self
+                .prompt_injection_detector
+                .detect(
+                    document.text
+                )
+            )
+
+            if (
+                not detection_result
+                .detected
+            ):
+                continue
+
+            # ====================================================
+            # Fail Closed
+            #
+            # 一旦任何 RetrievedDocument 命中
+            # Prompt Injection Rule，
+            # 本次 Document Retrieval 不允许 Commit。
+            #
+            # Step5.3 会进一步把这个异常转换为：
+            #
+            # refused
+            # prompt_injection_detected
+            # ====================================================
+
+            raise (
+                RuntimePromptInjectionDetectedError(
+                    chunk_id=(
+                        document.chunk_id
+                    ),
+                    document_id=(
+                        document.document_id
+                    ),
+                    detection_result=(
+                        detection_result
+                    ),
+                    execution_result=(
+                        execution_result
+                    ),
+                )
+            )
 
     # 兼容 8B：
     # 只连续执行 Tool Step，遇到非 Tool Step 停止。
@@ -866,6 +991,23 @@ class RuntimePlanExecutor:
                 "没有返回可用文档",
                 execution_result=result,
             )
+
+        # ============================================================
+        # Week7 Step5.2
+        #
+        # Tool 已经成功返回，
+        # Schema 也已经验证通过，
+        # 但 RetrievedDocument 仍然属于不可信外部内容。
+        #
+        # 必须在 Commit Runtime State 之前扫描。
+        # ============================================================
+
+        self._scan_retrieved_documents(
+            documents=(
+                output.documents
+            ),
+            execution_result=result,
+        )
 
         chunk_ids = tuple(
             document.chunk_id
