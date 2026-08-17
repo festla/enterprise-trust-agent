@@ -333,6 +333,130 @@ def test_create_state_starts_created(
         == "parse_query"
     )
 
+    assert (
+        state.user_role
+        == "reviewer"
+    )
+
+    assert (
+        state.granted_permissions
+        == (
+            "execute_calculation",
+            "read_documents",
+            "read_financial_data",
+        )
+    )
+
+# week7 Step4test
+def test_create_state_resolves_viewer_permissions(
+) -> None:
+    runtime = _build_runtime()
+
+    state = runtime.create_state(
+        query=(
+            "美的集团2024年"
+            "营业收入是多少？"
+        ),
+        user_role="viewer",
+    )
+
+    assert (
+        state.user_role
+        == "viewer"
+    )
+
+    assert (
+        state.granted_permissions
+        == (
+            "read_documents",
+            "read_financial_data",
+        )
+    )
+
+def test_prepare_preserves_access_context(
+) -> None:
+    runtime = _build_runtime()
+
+    state = runtime.prepare(
+        query=(
+            "美的集团2024年"
+            "营业收入是多少？"
+        ),
+        user_role="viewer",
+    )
+
+    assert (
+        state.user_role
+        == "viewer"
+    )
+
+    assert (
+        state.granted_permissions
+        == (
+            "read_documents",
+            "read_financial_data",
+        )
+    )
+
+    assert (
+        state.status
+        == "planned"
+    )
+
+def test_trajectory_preserves_access_context(
+) -> None:
+    runtime = _build_runtime()
+
+    state = runtime.create_state(
+        query=(
+            "一个不支持的问题"
+        ),
+        user_role="viewer",
+    )
+
+    now = FixedClock().now()
+
+    terminal_state = (
+        state.model_copy(
+            update={
+                "status": (
+                    "refused"
+                ),
+                "stop_reason": (
+                    "unsupported"
+                ),
+                "current_node": (
+                    "finish"
+                ),
+                "next_node": (
+                    "finish"
+                ),
+                "completed_at": now,
+                "updated_at": now,
+            }
+        )
+    )
+
+    trajectory = (
+        runtime._build_trajectory(
+            terminal_state
+        )
+    )
+
+    assert (
+        trajectory.user_role
+        == "viewer"
+    )
+
+    assert (
+        trajectory
+        .granted_permissions
+        == (
+            "read_documents",
+            "read_financial_data",
+        )
+    )
+
 
 # ============================================================
 # 8A 最核心测试：

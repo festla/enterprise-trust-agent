@@ -24,9 +24,11 @@ from app.schemas.tool_registry import (
     RetrievedDocument,
     ToolCallTrace,
     ToolExecutionResult,
+    ToolPermission,
 )
 from app.schemas.trust import (
     AnswerDraft,
+    UserRole,
     VerificationReport,
 )
 
@@ -64,6 +66,7 @@ StopReason = Literal[
     "unsupported",
     "missing_required_fields",
     "insufficient_evidence",
+    "permission_denied",
     "tool_failure",
     "tool_timeout",
     "max_steps_exceeded",
@@ -1053,6 +1056,35 @@ class AgentState(BaseModel):
         max_length=4000,
     )
 
+    # ============================================================
+    # Week7 - RBAC Access Context
+    #
+    # user_role:
+    #   用户在本次 Runtime 中的业务角色。
+    #
+    # granted_permissions:
+    #   Runtime 创建时根据 Role 解析得到的权限快照。
+    #
+    # 注意：
+    #   该字段用于状态持久化与审计；
+    #   后续 Step4.3 执行权限判断时仍会基于
+    #   user_role 重新通过 AccessController 判断，
+    #   不能把这个快照当成唯一安全边界。
+    # ============================================================
+
+    user_role: UserRole = (
+        "reviewer"
+    )
+
+    granted_permissions: tuple[
+        ToolPermission,
+        ...
+    ] = (
+        "execute_calculation",
+        "read_documents",
+        "read_financial_data",
+    )
+
     parsed_query: (
         ParsedFinancialQuery | None
     ) = None
@@ -1289,6 +1321,7 @@ class AgentState(BaseModel):
         "resolved_fact_ids",
         "evidence_ids",
         "calculation_ids",
+        "granted_permissions",
     )
     @classmethod
     def validate_unique_ids(
@@ -1639,6 +1672,19 @@ class AgentTrajectory(BaseModel):
     query: str = Field(
         min_length=1,
         max_length=4000,
+    )
+
+    user_role: UserRole = (
+        "reviewer"
+    )
+
+    granted_permissions: tuple[
+        ToolPermission,
+        ...
+    ] = (
+        "execute_calculation",
+        "read_documents",
+        "read_financial_data",
     )
 
     intent: AgentIntent | None = None

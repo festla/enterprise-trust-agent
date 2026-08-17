@@ -43,7 +43,9 @@ from app.schemas.tool_registry import (
 from app.services.registry import (
     RegistryBundle,
 )
-
+from app.services.runtime_access_control import (
+    RuntimeAccessController,
+)
 
 class RuntimePlanExecutorError(
     ValueError
@@ -178,9 +180,33 @@ _INTERNAL_ACTIONS = {
 class RuntimePlanExecutor:
     tool_executor: ToolExecutorProvider
 
+    # ========================================================
+    # Legacy Runtime Permission Snapshot
+    #
+    # Week7 Step4.3 开始：
+    # 这个字段不再是权限判断的最终 Authority。
+    #
+    # 暂时保留它是为了避免一次性破坏已有
+    # Runtime / Test 的构造接口。
+    #
+    # 真正权限来自：
+    #
+    # AgentState.user_role
+    #       ↓
+    # RuntimeAccessController
+    # ========================================================
+
     granted_permissions: frozenset[
         ToolPermission
     ]
+
+    access_controller: (
+        RuntimeAccessController
+    ) = field(
+        default_factory=(
+            RuntimeAccessController
+        )
+    )
 
     registry_bundle: (
         RegistryBundle | None
@@ -226,6 +252,57 @@ class RuntimePlanExecutor:
                 "document_top_k "
                 "必须位于 [1, 50]"
             )
+
+    def _effective_permissions_for_state(
+        self,
+        state: AgentState,
+    ) -> frozenset[
+        ToolPermission
+    ]:
+        """根据当前 UserRole 解析真正有效的 Tool Permission。
+
+        Week7 Step4.3：
+
+        不信任 RuntimePlanExecutor 构造时传入的固定权限，
+        也不直接把 AgentState.granted_permissions 当成
+        唯一安全边界。
+
+        Authority：
+
+            state.user_role
+                ↓
+            RuntimeAccessController
+                ↓
+            effective permissions
+
+        state.granted_permissions 只作为审计快照，
+        并在这里检查它是否被篡改或发生漂移。
+        """
+
+        effective_permissions = (
+            self.access_controller
+            .permissions_for_role(
+                state.user_role
+            )
+        )
+
+        recorded_permissions = (
+            frozenset(
+                state.granted_permissions
+            )
+        )
+
+        if (
+            recorded_permissions
+            != effective_permissions
+        ):
+            raise RuntimePlanExecutorError(
+                "AgentState RBAC 权限快照"
+                "与 user_role 不一致："
+                f"role={state.user_role}"
+            )
+
+        return effective_permissions
 
     # 兼容 8B：
     # 只连续执行 Tool Step，遇到非 Tool Step 停止。
@@ -454,7 +531,10 @@ class RuntimePlanExecutor:
                 run_id=state.run_id,
                 step_id=step.step_id,
                 granted_permissions=(
-                    self.granted_permissions
+                    self
+                    ._effective_permissions_for_state(
+                        state
+                    )
                 ),
             )
         )
@@ -615,7 +695,10 @@ class RuntimePlanExecutor:
                 run_id=state.run_id,
                 step_id=step.step_id,
                 granted_permissions=(
-                    self.granted_permissions
+                    self
+                    ._effective_permissions_for_state(
+                        state
+                    )
                 ),
             )
         )
@@ -755,7 +838,10 @@ class RuntimePlanExecutor:
                 run_id=state.run_id,
                 step_id=step.step_id,
                 granted_permissions=(
-                    self.granted_permissions
+                    self
+                    ._effective_permissions_for_state(
+                        state
+                    )
                 ),
             )
         )

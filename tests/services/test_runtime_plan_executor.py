@@ -68,6 +68,7 @@ from app.services.runtime_query_parser import (
 from app.services.tool_registry import (
     ToolExecutor,
     ToolRegistry,
+    ToolExecutionFailedError,
 )
 
 class FixedClock:
@@ -877,6 +878,126 @@ def test_financial_retrieval_reuses_tool_executor_cache(
 # 现在全部执行。
 # ============================================================
 
+def test_viewer_cannot_execute_calculation(
+) -> None:
+    (
+        runtime,
+        plan_executor,
+        calculation_provider,
+        _,
+    ) = _build_services()
+
+    prepared = runtime.prepare(
+        query=(
+            "美的集团2024年"
+            "毛利率是多少？"
+        ),
+        user_role="viewer",
+    )
+
+    # 注意：
+    #
+    # _build_services() 中 RuntimePlanExecutor
+    # 构造时仍然拥有 execute_calculation。
+    #
+    # 如果系统错误地继续相信
+    # self.granted_permissions，
+    # 这个测试就会失败。
+    #
+    # Step4.3 要证明：
+    #
+    # state.user_role 才是真正 Authority。
+
+    with pytest.raises(
+        ToolExecutionFailedError,
+    ) as exc_info:
+        plan_executor.execute_all_steps(
+            prepared
+        )
+
+    traces = (
+        exc_info.value.traces
+    )
+
+    assert len(traces) == 1
+
+    trace = traces[0]
+
+    assert (
+        trace.tool_name
+        == "execute_calculation"
+    )
+
+    assert (
+        trace.error_type
+        == "ToolPermissionDeniedError"
+    )
+
+    assert (
+        trace.status
+        == "permanent_error"
+    )
+
+    # 权限检查发生在 Handler 调用前。
+    #
+    # 因此真正 Calculation Provider
+    # 根本不能被执行。
+
+    assert (
+        calculation_provider.calls
+        == []
+    )
+
+def test_rbac_permission_snapshot_tampering_is_rejected(
+) -> None:
+    (
+        runtime,
+        plan_executor,
+        _,
+        _,
+    ) = _build_services()
+
+    prepared = runtime.prepare(
+        query=(
+            "美的集团2024年"
+            "营业收入是多少？"
+        ),
+        user_role="viewer",
+    )
+
+    # 正常 viewer 没有 execute_calculation。
+    assert (
+        "execute_calculation"
+        not in (
+            prepared
+            .granted_permissions
+        )
+    )
+
+    # 模拟 Checkpoint / State 被错误修改，
+    # 给 viewer 塞入管理员权限。
+    tampered_state = (
+        prepared.model_copy(
+            update={
+                "granted_permissions": (
+                    "execute_calculation",
+                    "read_documents",
+                    "read_financial_data",
+                )
+            }
+        )
+    )
+
+    with pytest.raises(
+        RuntimePlanExecutorError,
+        match="RBAC 权限快照",
+    ):
+        (
+            plan_executor
+            .execute_next_step(
+                tampered_state
+            )
+        )
 
 def test_calculation_plan_executes_all_tool_steps(
 ) -> None:

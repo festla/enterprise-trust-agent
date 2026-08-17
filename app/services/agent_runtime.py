@@ -21,6 +21,9 @@ from app.schemas.agent_runtime import (
     ParsedFinancialQuery,
     RuntimePlan,
 )
+from app.schemas.trust import (
+    UserRole,
+)
 from app.services.checkpoint_store import (
     CheckpointStore,
 )
@@ -50,6 +53,10 @@ from app.services.runtime_trust_verifier import (
     RuntimeTrustVerificationError,
     RuntimeTrustVerifier,
 )
+from app.services.runtime_access_control import (
+    RuntimeAccessController,
+)
+
 class AgentRuntimeError(
     ValueError
 ):
@@ -177,6 +184,14 @@ class AgentRuntime:
 
     planner: RuntimePlannerProvider
 
+    access_controller: (
+        RuntimeAccessController
+    ) = field(
+        default_factory=(
+            RuntimeAccessController
+        )
+    )
+
     plan_executor: (
         RuntimePlanExecutor | None
     ) = None
@@ -223,9 +238,37 @@ class AgentRuntime:
         trace_id: str | None = None,
         run_id: str | None = None,
         thread_id: str | None = None,
+        user_role: UserRole = (
+            "reviewer"
+        ),
         max_steps: int = 32,
     ) -> AgentState:
+        """创建带有 RBAC Access Context 的初始状态。"""
+
         now = self.clock.now()
+
+        # ========================================================
+        # Step4.2
+        #
+        # Role
+        #   ↓
+        # AccessController
+        #   ↓
+        # Effective Permissions
+        #
+        # frozenset 转换成排序 tuple，
+        # 使 Checkpoint / Trajectory 序列化结果稳定。
+        # ========================================================
+
+        granted_permissions = tuple(
+            sorted(
+                self
+                .access_controller
+                .permissions_for_role(
+                    user_role
+                )
+            )
+        )
 
         return AgentState(
             request_id=(
@@ -234,30 +277,52 @@ class AgentRuntime:
                     "request"
                 )
             ),
+
             trace_id=(
                 trace_id
                 or self.id_factory.new_id(
                     "trace"
                 )
             ),
+
             run_id=(
                 run_id
                 or self.id_factory.new_id(
                     "run"
                 )
             ),
+
             thread_id=(
                 thread_id
                 or self.id_factory.new_id(
                     "thread"
                 )
             ),
+
             query=query,
+
+            user_role=(
+                user_role
+            ),
+
+            granted_permissions=(
+                granted_permissions
+            ),
+
             status="created",
+
             max_steps=max_steps,
-            current_node="parse_query",
-            next_node="parse_query",
+
+            current_node=(
+                "parse_query"
+            ),
+
+            next_node=(
+                "parse_query"
+            ),
+
             started_at=now,
+
             updated_at=now,
         )
 
@@ -269,6 +334,9 @@ class AgentRuntime:
         trace_id: str | None = None,
         run_id: str | None = None,
         thread_id: str | None = None,
+        user_role: UserRole = (
+            "reviewer"
+        ),
         max_steps: int = 32,
     ) -> AgentState:
         state = self.create_state(
@@ -277,6 +345,7 @@ class AgentRuntime:
             trace_id=trace_id,
             run_id=run_id,
             thread_id=thread_id,
+            user_role=user_role,
             max_steps=max_steps,
         )
 
@@ -352,6 +421,9 @@ class AgentRuntime:
         trace_id: str | None = None,
         run_id: str | None = None,
         thread_id: str | None = None,
+        user_role: UserRole = (
+            "reviewer"
+        ),
         max_steps: int = 32,
     ) -> AgentState:
         """启动一次新的 Agent 运行。"""
@@ -362,6 +434,7 @@ class AgentRuntime:
             trace_id=trace_id,
             run_id=run_id,
             thread_id=thread_id,
+            user_role=user_role,
             max_steps=max_steps,
         )
 
@@ -1603,8 +1676,37 @@ class AgentRuntime:
             error,
             ToolExecutionFailedError,
         ):
+            # ========================================================
+            # Week7 Step4.3
+            #
+            # Permission Denied 不是 Runtime Crash。
+            #
+            # 它表示系统成功执行了安全策略，
+            # 并主动阻止了一次未授权 Tool Call。
+            #
+            # 因此：
+            #
+            # failed
+            #     ❌
+            #
+            # refused / permission_denied
+            #     ✅
+            # ========================================================
+
             if any(
-                trace.status == "timed_out"
+                trace.error_type
+                == "ToolPermissionDeniedError"
+                for trace
+                in error.traces
+            ):
+                return (
+                    "permission_denied",
+                    "refused",
+                )
+
+            if any(
+                trace.status
+                == "timed_out"
                 for trace
                 in error.traces
             ):
@@ -1749,6 +1851,12 @@ class AgentRuntime:
             run_id=state.run_id,
             thread_id=state.thread_id,
             query=state.query,
+            user_role=(
+                state.user_role
+            ),
+            granted_permissions=(
+                state.granted_permissions
+            ),
             intent=state.intent,
             planner_version=(
                 state.planner_version

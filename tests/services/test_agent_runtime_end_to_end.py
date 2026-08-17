@@ -759,6 +759,184 @@ def test_financial_fact_runs_end_to_end(
         is True
     )
 
+def test_viewer_financial_fact_runs_end_to_end(
+    tmp_path: Path,
+) -> None:
+    (
+        runtime,
+        _,
+        trajectory_store,
+    ) = _build_runtime(
+        tmp_path
+    )
+
+    state = runtime.run(
+        query=(
+            "美的集团2024年"
+            "营业收入是多少？"
+        ),
+        user_role="viewer",
+    )
+
+    assert (
+        state.status
+        == "completed"
+    )
+
+    assert (
+        state.stop_reason
+        == "completed"
+    )
+
+    assert (
+        state.user_role
+        == "viewer"
+    )
+
+    assert (
+        state.granted_permissions
+        == (
+            "read_documents",
+            "read_financial_data",
+        )
+    )
+
+    assert (
+        state.answer
+        is not None
+    )
+
+    trajectory = (
+        trajectory_store.load(
+            state.run_id
+        )
+    )
+
+    assert (
+        trajectory.user_role
+        == "viewer"
+    )
+
+    assert (
+        trajectory
+        .granted_permissions
+        == (
+            "read_documents",
+            "read_financial_data",
+        )
+    )
+
+def test_viewer_calculation_is_refused_by_rbac(
+    tmp_path: Path,
+) -> None:
+    (
+        runtime,
+        _,
+        trajectory_store,
+    ) = _build_runtime(
+        tmp_path
+    )
+
+    state = runtime.run(
+        query=(
+            "美的集团2024年"
+            "毛利率是多少？"
+        ),
+        user_role="viewer",
+    )
+
+    # ========================================================
+    # Permission Denied 是安全策略正常工作。
+    #
+    # 所以应该：
+    #
+    # refused
+    #
+    # 而不是：
+    #
+    # failed
+    # ========================================================
+
+    assert (
+        state.status
+        == "refused"
+    )
+
+    assert (
+        state.stop_reason
+        == "permission_denied"
+    )
+
+    assert (
+        state.answer
+        is None
+    )
+
+    assert (
+        state.user_role
+        == "viewer"
+    )
+
+    # Calculation 没有真正执行成功。
+
+    assert (
+        state.calculation_ids
+        == ()
+    )
+
+    permission_traces = tuple(
+        trace
+        for trace
+        in state.tool_call_traces
+        if (
+            trace.error_type
+            == "ToolPermissionDeniedError"
+        )
+    )
+
+    assert (
+        len(permission_traces)
+        == 1
+    )
+
+    trace = (
+        permission_traces[0]
+    )
+
+    assert (
+        trace.tool_name
+        == "execute_calculation"
+    )
+
+    assert (
+        trace.status
+        == "permanent_error"
+    )
+
+    # ========================================================
+    # Audit Trail 也必须知道这次是权限拒绝。
+    # ========================================================
+
+    trajectory = (
+        trajectory_store.load(
+            state.run_id
+        )
+    )
+
+    assert (
+        trajectory.final_status
+        == "refused"
+    )
+
+    assert (
+        trajectory.stop_reason
+        == "permission_denied"
+    )
+
+    assert (
+        trajectory.user_role
+        == "viewer"
+    )
 
 def test_calculation_runs_end_to_end(
     tmp_path: Path,
@@ -775,10 +953,21 @@ def test_calculation_runs_end_to_end(
         query=(
             "美的集团2024年"
             "毛利率是多少？"
-        )
+        ),
+        user_role="reviewer",
     )
 
     assert state.status == "completed"
+
+    assert (
+        state.user_role
+        == "reviewer"
+    )
+
+    assert (
+        "execute_calculation"
+        in state.granted_permissions
+    )
 
     assert len(
         state.calculation_traces
