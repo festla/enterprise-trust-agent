@@ -497,11 +497,31 @@ class RuntimeAnswerGenerator:
         self,
         state: AgentState,
     ) -> AgentState:
-        if state.status != "verifying":
+        """把已通过可信校验的 AnswerDraft 转换为最终答案。
+
+        Step 3.3 Hard Trust Gate：
+
+        即使调用方绕过 AgentRuntime / LangGraph，
+        直接调用 RuntimeAnswerGenerator.generate()，
+        也必须提供已经通过的 VerificationReport。
+        """
+
+        # ========================================================
+        # Gate 1：Runtime 状态
+        # ========================================================
+
+        if (
+            state.status
+            != "verifying"
+        ):
             raise RuntimeAnswerGenerationError(
-                "只有通过 verify_evidence "
-                "的状态才能生成答案"
+                "只有 Verifying 状态才能进入 "
+                "generate_answer"
             )
+
+        # ========================================================
+        # Gate 2：Runtime Step Budget
+        # ========================================================
 
         if (
             state.step_count
@@ -511,18 +531,81 @@ class RuntimeAnswerGenerator:
                 "Runtime 已达到 max_steps"
             )
 
-        if state.intent is None:
+        # ========================================================
+        # Gate 3：Intent
+        # ========================================================
+
+        if (
+            state.intent
+            is None
+        ):
             raise RuntimeAnswerGenerationError(
                 "AgentState 缺少 intent"
             )
 
-        if state.answer_draft is None:
+        # ========================================================
+        # Gate 4：AnswerDraft
+        # ========================================================
+
+        if (
+            state.answer_draft
+            is None
+        ):
             raise RuntimeAnswerGenerationError(
-                "generate_answer 缺少 answer_draft"
+                "generate_answer 缺少 "
+                "answer_draft"
             )
 
-        started_at = self.clock.now()
-        timer_start = perf_counter()
+        # ========================================================
+        # Gate 5：VerificationReport 必须存在
+        #
+        # 这是 Step 3.3 第一层核心 Hard Gate。
+        #
+        # 有 AnswerDraft 并不等于：
+        #   AnswerDraft 已经被验证。
+        #
+        # 因此不能因为 Draft 存在就允许生成最终答案。
+        # ========================================================
+
+        if (
+            state.verification_report
+            is None
+        ):
+            raise RuntimeAnswerGenerationError(
+                "generate_answer 缺少 "
+                "verification_report"
+            )
+
+        # ========================================================
+        # Gate 6：VerificationReport 必须通过
+        #
+        # 这是 Step 3.3 第二层核心 Hard Gate。
+        #
+        # 即使 VerificationReport 已经存在，
+        # passed=False 也绝不能发布答案。
+        # ========================================================
+
+        if (
+            not state
+            .verification_report
+            .passed
+        ):
+            raise RuntimeAnswerGenerationError(
+                "generate_answer 要求 "
+                "VerificationReport 已通过"
+            )
+
+        # ========================================================
+        # 从这里开始才真正允许生成最终答案。
+        # ========================================================
+
+        started_at = (
+            self.clock.now()
+        )
+
+        timer_start = (
+            perf_counter()
+        )
 
         if (
             state.intent
@@ -541,7 +624,9 @@ class RuntimeAnswerGenerator:
                 )
             )
 
-        completed_at = self.clock.now()
+        completed_at = (
+            self.clock.now()
+        )
 
         span = NodeSpan(
             span_id=(
@@ -549,13 +634,26 @@ class RuntimeAnswerGenerator:
                     "span"
                 )
             ),
-            node_name="generate_answer",
+            node_name=(
+                "generate_answer"
+            ),
             attempt=1,
             status="completed",
             input_summary={
-                "intent": state.intent,
+                "intent": (
+                    state.intent
+                ),
                 "citation_count": len(
                     state.citations
+                ),
+
+                # Step 3.3：
+                # 最终答案生成轨迹明确记录
+                # Trust Gate 已通过。
+                "verification_passed": (
+                    state
+                    .verification_report
+                    .passed
                 ),
             },
             output_summary={
@@ -569,8 +667,12 @@ class RuntimeAnswerGenerator:
                     self.generator_version
                 ),
             },
-            started_at=started_at,
-            completed_at=completed_at,
+            started_at=(
+                started_at
+            ),
+            completed_at=(
+                completed_at
+            ),
             latency_ms=max(
                 (
                     perf_counter()
@@ -580,7 +682,8 @@ class RuntimeAnswerGenerator:
                 0.0,
             ),
             checkpoint_revision=(
-                state.checkpoint_revision
+                state
+                .checkpoint_revision
             ),
             error_type=None,
             error_message=None,
@@ -589,26 +692,40 @@ class RuntimeAnswerGenerator:
         return self._replace_state(
             state,
             answer=answer,
+
             status="completed",
+
             stop_reason="completed",
+
             generator_version=(
                 self.generator_version
             ),
+
             node_spans=(
                 state.node_spans
                 + (
                     span,
                 )
             ),
+
             step_count=(
-                state.step_count + 1
+                state.step_count
+                + 1
             ),
+
             current_node=(
                 "generate_answer"
             ),
+
             next_node="finish",
-            updated_at=completed_at,
-            completed_at=completed_at,
+
+            updated_at=(
+                completed_at
+            ),
+
+            completed_at=(
+                completed_at
+            ),
         )
 
     def _build_financial_answer(

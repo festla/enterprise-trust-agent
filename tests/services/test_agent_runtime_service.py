@@ -27,6 +27,8 @@ from app.schemas.trust import (
     AnswerDraft,
     Claim,
     ClaimSupport,
+    VerificationIssue,
+    VerificationReport,
 )
 from app.services.agent_runtime import (
     AgentRuntime,
@@ -46,6 +48,9 @@ from app.services.runtime_answer_draft import (
 )
 from app.services.runtime_query_parser import (
     RuntimeQueryParser,
+)
+from app.services.runtime_trust_verifier import (
+    RuntimeTrustVerifier,
 )
 from dataclasses import replace
 from unittest.mock import MagicMock
@@ -756,7 +761,7 @@ def test_prepare_answer_node_stores_draft(
 
     assert (
         updated_state.next_node
-        == "generate_answer"
+        == "verify_answer"
     )
 
     assert (
@@ -784,5 +789,262 @@ def test_prepare_answer_node_requires_builder(
         match="answer_draft_builder",
     ):
         runtime._run_prepare_answer_node(
+            state
+        )
+
+def _build_state_ready_for_verify_answer(
+) -> AgentState:
+    """构造已经完成 prepare_answer 的 State。"""
+
+    state = (
+        _build_verifying_state()
+    )
+
+    return state.model_copy(
+        update={
+            "answer_draft": (
+                _build_test_answer_draft()
+            ),
+            "current_node": (
+                "prepare_answer"
+            ),
+            "next_node": (
+                "verify_answer"
+            ),
+        }
+    )
+
+
+def test_verify_answer_node_passes_to_generator(
+) -> None:
+    """Trust Verification 通过后才能进入 Generator。"""
+
+    report = VerificationReport(
+        passed=True,
+        numeric_verified=True,
+        evidence_verified=True,
+        citation_verified=True,
+        evidence_sufficient=True,
+        issues=(),
+    )
+
+    verifier = MagicMock(
+        spec=RuntimeTrustVerifier
+    )
+
+    verifier.verify.return_value = (
+        report
+    )
+
+    runtime = replace(
+        _build_runtime(),
+        trust_verifier=verifier,
+    )
+
+    state = (
+        _build_state_ready_for_verify_answer()
+    )
+
+    updated_state = (
+        runtime
+        ._run_verify_answer_node(
+            state
+        )
+    )
+
+    verifier.verify.assert_called_once_with(
+        state
+    )
+
+    assert (
+        updated_state
+        .verification_report
+        == report
+    )
+
+    assert (
+        updated_state.status
+        == "verifying"
+    )
+
+    assert (
+        updated_state.stop_reason
+        is None
+    )
+
+    assert (
+        updated_state.current_node
+        == "verify_answer"
+    )
+
+    assert (
+        updated_state.next_node
+        == "generate_answer"
+    )
+
+    assert (
+        updated_state.completed_at
+        is None
+    )
+
+    assert (
+        updated_state.step_count
+        == state.step_count + 1
+    )
+
+    assert (
+        updated_state
+        .node_spans[-1]
+        .node_name
+        == "verify_answer"
+    )
+
+    assert (
+        updated_state
+        .node_spans[-1]
+        .output_summary[
+            "passed"
+        ]
+        is True
+    )
+
+
+def test_verify_answer_node_refuses_failed_report(
+) -> None:
+    """VerificationReport FAIL 时必须拒答。"""
+
+    issue = VerificationIssue(
+        issue_type=(
+            "unsupported_claim"
+        ),
+        severity="error",
+        message=(
+            "Claim 与确定性事实不一致"
+        ),
+        claim_id=(
+            "claim_test_revenue"
+        ),
+        expected_value=(
+            "407149600000"
+        ),
+        actual_value="1",
+    )
+
+    report = VerificationReport(
+        passed=False,
+        numeric_verified=False,
+        evidence_verified=True,
+        citation_verified=True,
+        evidence_sufficient=False,
+        issues=(
+            issue,
+        ),
+    )
+
+    verifier = MagicMock(
+        spec=RuntimeTrustVerifier
+    )
+
+    verifier.verify.return_value = (
+        report
+    )
+
+    runtime = replace(
+        _build_runtime(),
+        trust_verifier=verifier,
+    )
+
+    state = (
+        _build_state_ready_for_verify_answer()
+    )
+
+    updated_state = (
+        runtime
+        ._run_verify_answer_node(
+            state
+        )
+    )
+
+    verifier.verify.assert_called_once_with(
+        state
+    )
+
+    assert (
+        updated_state
+        .verification_report
+        == report
+    )
+
+    assert (
+        updated_state.status
+        == "refused"
+    )
+
+    assert (
+        updated_state.stop_reason
+        == "insufficient_evidence"
+    )
+
+    assert (
+        updated_state.answer
+        is None
+    )
+
+    assert (
+        updated_state.current_node
+        == "verify_answer"
+    )
+
+    assert (
+        updated_state.next_node
+        == "finish"
+    )
+
+    assert (
+        updated_state.completed_at
+        is not None
+    )
+
+    assert (
+        updated_state
+        .node_spans[-1]
+        .node_name
+        == "verify_answer"
+    )
+
+    assert (
+        updated_state
+        .node_spans[-1]
+        .output_summary[
+            "passed"
+        ]
+        is False
+    )
+
+    assert (
+        updated_state
+        .node_spans[-1]
+        .output_summary[
+            "issue_count"
+        ]
+        == 1
+    )
+
+
+def test_verify_answer_node_requires_trust_verifier(
+) -> None:
+    """没有 TrustVerifier 时不能进入 verify_answer。"""
+
+    runtime = _build_runtime()
+
+    state = (
+        _build_state_ready_for_verify_answer()
+    )
+
+    with pytest.raises(
+        AgentRuntimeError,
+        match="trust_verifier",
+    ):
+        runtime._run_verify_answer_node(
             state
         )

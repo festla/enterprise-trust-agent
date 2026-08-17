@@ -27,6 +27,7 @@ from app.schemas.tool_registry import (
 )
 from app.schemas.trust import (
     AnswerDraft,
+    VerificationReport,
 )
 
 AgentIntent = Literal[
@@ -86,6 +87,7 @@ RuntimeNode = Literal[
     "execute_plan",
     "verify_evidence",
     "prepare_answer",
+    "verify_answer",
     "generate_answer",
     "await_human",
     "handle_failure",
@@ -1129,13 +1131,19 @@ class AgentState(BaseModel):
         ...,
     ] = ()
 
-    answer_draft: AnswerDraft | None = None
+    answer_draft: (
+        AnswerDraft | None
+    ) = None
+
+    verification_report: (
+        VerificationReport | None
+    ) = None
 
     answer: AgentAnswer | None = None
 
     citations: tuple[
         CitationRecord,
-        ...,
+        ...
     ] = ()
 
     status: AgentStatus = "created"
@@ -1703,11 +1711,17 @@ class AgentTrajectory(BaseModel):
         ...,
     ] = ()
 
-    answer_draft: AnswerDraft | None = None
+    answer_draft: (
+        AnswerDraft | None
+    ) = None
+
+    verification_report: (
+        VerificationReport | None
+    ) = None
 
     errors: tuple[
         AgentErrorRecord,
-        ...,
+        ...
     ] = ()
 
     answer: AgentAnswer | None = None

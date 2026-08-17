@@ -80,7 +80,9 @@ from app.services.trajectory_store import (
 from app.services.runtime_answer_draft import (
     RuntimeAnswerDraftBuilder,
 )
-
+from app.services.runtime_trust_verifier import (
+    RuntimeTrustVerifier,
+)
 class FixedClock:
     def now(
         self,
@@ -519,6 +521,12 @@ def _build_runtime(
         )
     )
 
+    trust_verifier=(
+        RuntimeTrustVerifier(
+            registry_bundle=bundle
+        )
+    )
+
     answer_generator = (
         RuntimeAnswerGenerator(
             registry_bundle=bundle,
@@ -545,8 +553,12 @@ def _build_runtime(
             plan_executor
         ),
         verifier=verifier,
+
         answer_draft_builder=(
             answer_draft_builder
+        ),
+        trust_verifier=(
+            trust_verifier
         ),
         answer_generator=(
             answer_generator
@@ -586,8 +598,18 @@ def test_financial_fact_runs_end_to_end(
         )
     )
 
-    assert state.status == "completed"
-
+    assert (
+        state.status
+        == "completed"
+    ), "\n".join(
+        (
+            f"stage={error.stage} | "
+            f"type={error.error_type} | "
+            f"message={error.message}"
+        )
+        for error
+        in state.errors
+    )
     assert (
         state.stop_reason
         == "completed"
@@ -657,6 +679,11 @@ def test_financial_fact_runs_end_to_end(
     )
 
     assert (
+        "verify_answer"
+        in node_names
+    )
+
+    assert (
         trajectory.final_status
         == "completed"
     )
@@ -673,6 +700,19 @@ def test_financial_fact_runs_end_to_end(
         == state.answer_draft.draft_id
     )
 
+    assert (
+        trajectory
+        .verification_report
+        is not None
+    )
+
+    assert (
+        trajectory
+        .verification_report
+        .passed
+        is True
+    )
+
     replay = (
         trajectory_store.replay(
             state.run_id
@@ -682,6 +722,41 @@ def test_financial_fact_runs_end_to_end(
     assert (
         "query_financial_data"
         in replay.tools
+    )
+
+    assert (
+        state.verification_report
+        is not None
+    )
+
+    assert (
+        state.verification_report
+        .passed
+        is True
+    )
+
+    assert (
+        state.verification_report
+        .numeric_verified
+        is True
+    )
+
+    assert (
+        state.verification_report
+        .evidence_verified
+        is True
+    )
+
+    assert (
+        state.verification_report
+        .citation_verified
+        is True
+    )
+
+    assert (
+        state.verification_report
+        .evidence_sufficient
+        is True
     )
 
 

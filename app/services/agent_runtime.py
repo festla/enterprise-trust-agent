@@ -46,7 +46,10 @@ from app.services.runtime_answer_draft import (
     RuntimeAnswerDraftBuilder,
     RuntimeAnswerDraftError,
 )
-
+from app.services.runtime_trust_verifier import (
+    RuntimeTrustVerificationError,
+    RuntimeTrustVerifier,
+)
 class AgentRuntimeError(
     ValueError
 ):
@@ -184,6 +187,10 @@ class AgentRuntime:
 
     answer_draft_builder: (
         RuntimeAnswerDraftBuilder | None
+    ) = None
+
+    trust_verifier: (
+        RuntimeTrustVerifier | None
     ) = None
 
     answer_generator: (
@@ -593,7 +600,23 @@ class AgentRuntime:
                     )
 
                     continue
+                if (
+                    next_node
+                    == "verify_answer"
+                ):
+                    state = (
+                        self._run_verify_answer_node(
+                            state
+                        )
+                    )
 
+                    state = (
+                        self._persist_checkpoint(
+                            state
+                        )
+                    )
+
+                    continue
                 if (
                     next_node
                     == "generate_answer"
@@ -931,70 +954,117 @@ class AgentRuntime:
         self,
         state: AgentState,
     ) -> AgentState:
-        if self.answer_draft_builder is None:
+        if (
+            self.answer_draft_builder
+            is None
+        ):
             raise AgentRuntimeError(
                 "prepare_answer 需要配置 "
                 "answer_draft_builder"
             )
 
-        if state.status != "verifying":
+        if (
+            state.status
+            != "verifying"
+        ):
             raise AgentRuntimeError(
                 "只有 Verifying 状态才能进入 "
                 "prepare_answer"
             )
 
-        started_at = self.clock.now()
-        timer_start = perf_counter()
+        if (
+            state.step_count
+            >= state.max_steps
+        ):
+            raise AgentRuntimeError(
+                "Runtime 已达到 max_steps"
+            )
+
+        started_at = (
+            self.clock.now()
+        )
+
+        timer_start = (
+            perf_counter()
+        )
 
         answer_draft = (
-            self.answer_draft_builder.build(
+            self.answer_draft_builder
+            .build(
                 state
             )
         )
 
-        completed_at = self.clock.now()
+        completed_at = (
+            self.clock.now()
+        )
 
-        span = self._build_completed_span(
-            node_name="prepare_answer",
-            input_summary={
-                "intent": state.intent,
-                "citation_count": len(
-                    state.citations
+        span = (
+            self._build_completed_span(
+                node_name=(
+                    "prepare_answer"
                 ),
-                "fact_count": len(
-                    state.resolved_fact_ids
+                input_summary={
+                    "intent": (
+                        state.intent
+                    ),
+                    "citation_count": len(
+                        state.citations
+                    ),
+                    "fact_count": len(
+                        state.resolved_fact_ids
+                    ),
+                    "calculation_count": len(
+                        state.calculation_ids
+                    ),
+                },
+                output_summary={
+                    "draft_id": (
+                        answer_draft.draft_id
+                    ),
+                    "draft_type": (
+                        answer_draft.draft_type
+                    ),
+                    "claim_count": len(
+                        answer_draft.claims
+                    ),
+                },
+                started_at=(
+                    started_at
                 ),
-                "calculation_count": len(
-                    state.calculation_ids
+                completed_at=(
+                    completed_at
                 ),
-            },
-            output_summary={
-                "draft_id": (
-                    answer_draft.draft_id
+                timer_start=(
+                    timer_start
                 ),
-                "draft_type": (
-                    answer_draft.draft_type
+                checkpoint_revision=(
+                    state
+                    .checkpoint_revision
                 ),
-                "claim_count": len(
-                    answer_draft.claims
-                ),
-            },
-            started_at=started_at,
-            completed_at=completed_at,
-            timer_start=timer_start,
-            checkpoint_revision=(
-                state.checkpoint_revision
-            ),
+            )
         )
 
         return self._replace_state(
             state,
-            answer_draft=answer_draft,
+            answer_draft=(
+                answer_draft
+            ),
+
+            # 新 Draft 尚未经过可信验证。
+            verification_report=None,
 
             status="verifying",
 
-            current_node="prepare_answer",
-            next_node="generate_answer",
+            current_node=(
+                "prepare_answer"
+            ),
+
+            # Step3.2 的核心变化：
+            # 不允许直接进入 Generator。
+            next_node=(
+                "verify_answer"
+            ),
 
             node_spans=(
                 state.node_spans
@@ -1004,10 +1074,241 @@ class AgentRuntime:
             ),
 
             step_count=(
-                state.step_count + 1
+                state.step_count
+                + 1
             ),
 
-            updated_at=completed_at,
+            updated_at=(
+                completed_at
+            ),
+        )
+
+    def _run_verify_answer_node(
+        self,
+        state: AgentState,
+    ) -> AgentState:
+        """对 AnswerDraft 执行回答级可信校验。"""
+
+        if (
+            self.trust_verifier
+            is None
+        ):
+            raise AgentRuntimeError(
+                "verify_answer 需要配置 "
+                "trust_verifier"
+            )
+
+        if (
+            state.status
+            != "verifying"
+        ):
+            raise AgentRuntimeError(
+                "只有 Verifying 状态才能进入 "
+                "verify_answer"
+            )
+
+        if (
+            state.answer_draft
+            is None
+        ):
+            raise AgentRuntimeError(
+                "verify_answer 缺少 "
+                "answer_draft"
+            )
+
+        if (
+            state.step_count
+            >= state.max_steps
+        ):
+            raise AgentRuntimeError(
+                "Runtime 已达到 max_steps"
+            )
+
+        started_at = (
+            self.clock.now()
+        )
+
+        timer_start = (
+            perf_counter()
+        )
+
+        # ========================================================
+        # Trust Verification
+        #
+        # RuntimeTrustVerifier 不修改 State。
+        # 它只返回结构化 VerificationReport。
+        # ========================================================
+
+        verification_report = (
+            self.trust_verifier
+            .verify(
+                state
+            )
+        )
+
+        completed_at = (
+            self.clock.now()
+        )
+
+        issue_types = tuple(
+            issue.issue_type
+            for issue
+            in verification_report.issues
+        )
+
+        span = (
+            self._build_completed_span(
+                node_name=(
+                    "verify_answer"
+                ),
+                input_summary={
+                    "draft_id": (
+                        state
+                        .answer_draft
+                        .draft_id
+                    ),
+                    "claim_count": len(
+                        state
+                        .answer_draft
+                        .claims
+                    ),
+                },
+                output_summary={
+                    "passed": (
+                        verification_report
+                        .passed
+                    ),
+                    "numeric_verified": (
+                        verification_report
+                        .numeric_verified
+                    ),
+                    "evidence_verified": (
+                        verification_report
+                        .evidence_verified
+                    ),
+                    "citation_verified": (
+                        verification_report
+                        .citation_verified
+                    ),
+                    "evidence_sufficient": (
+                        verification_report
+                        .evidence_sufficient
+                    ),
+                    "issue_count": len(
+                        verification_report
+                        .issues
+                    ),
+                    "issue_types": (
+                        issue_types
+                    ),
+                },
+                started_at=(
+                    started_at
+                ),
+                completed_at=(
+                    completed_at
+                ),
+                timer_start=(
+                    timer_start
+                ),
+                checkpoint_revision=(
+                    state
+                    .checkpoint_revision
+                ),
+            )
+        )
+
+        # ========================================================
+        # PASS
+        #
+        # 校验成功：
+        #
+        # AnswerDraft
+        #     ↓
+        # VerificationReport(PASS)
+        #     ↓
+        # generate_answer
+        # ========================================================
+
+        if (
+            verification_report.passed
+        ):
+            return self._replace_state(
+                state,
+                verification_report=(
+                    verification_report
+                ),
+                status="verifying",
+                current_node=(
+                    "verify_answer"
+                ),
+                next_node=(
+                    "generate_answer"
+                ),
+                node_spans=(
+                    state.node_spans
+                    + (
+                        span,
+                    )
+                ),
+                step_count=(
+                    state.step_count
+                    + 1
+                ),
+                updated_at=(
+                    completed_at
+                ),
+            )
+
+        # ========================================================
+        # FAIL
+        #
+        # Trust Verification 本身执行成功，
+        # 但发现回答不可信。
+        #
+        # 这不是 Runtime Crash，
+        # 而是 Controlled Refusal。
+        # ========================================================
+
+        return self._replace_state(
+            state,
+            verification_report=(
+                verification_report
+            ),
+
+            answer=None,
+
+            status="refused",
+
+            stop_reason=(
+                "insufficient_evidence"
+            ),
+
+            current_node=(
+                "verify_answer"
+            ),
+
+            next_node="finish",
+
+            node_spans=(
+                state.node_spans
+                + (
+                    span,
+                )
+            ),
+
+            step_count=(
+                state.step_count
+                + 1
+            ),
+
+            completed_at=(
+                completed_at
+            ),
+
+            updated_at=(
+                completed_at
+            ),
         )
 
     def _mark_refused(
@@ -1352,15 +1653,21 @@ class AgentRuntime:
 
         if isinstance(
             error,
-            RuntimeAnswerGenerationError,
-        ):
-            return "generate_answer"
-
-        if isinstance(
-            error,
             RuntimeAnswerDraftError,
         ):
             return "prepare_answer"
+
+        if isinstance(
+            error,
+            RuntimeTrustVerificationError,
+        ):
+            return "verify_answer"
+
+        if isinstance(
+            error,
+            RuntimeAnswerGenerationError,
+        ):
+            return "generate_answer"
 
         return "execute_plan"
 
@@ -1495,6 +1802,9 @@ class AgentRuntime:
             citations=state.citations,
             answer_draft=(
                 state.answer_draft
+            ),
+            verification_report=(
+                state.verification_report
             ),
             errors=state.errors,
             answer=state.answer,

@@ -78,7 +78,12 @@ from app.services.tool_registry import (
 from app.services.trajectory_store import (
     TrajectoryStore,
 )
-
+from app.services.runtime_answer_draft import (
+    RuntimeAnswerDraftBuilder,
+)
+from app.services.runtime_trust_verifier import (
+    RuntimeTrustVerifier,
+)
 
 class FixedClock:
     def now(
@@ -342,6 +347,19 @@ def _build_runtime(
                 ),
             )
         ),
+
+        answer_draft_builder=(
+            RuntimeAnswerDraftBuilder(
+                registry_bundle=bundle
+            )
+        ),
+
+        trust_verifier=(
+            RuntimeTrustVerifier(
+                registry_bundle=bundle
+            )
+        ),
+
         answer_generator=(
             RuntimeAnswerGenerator(
                 registry_bundle=bundle,
@@ -434,6 +452,20 @@ def test_graph_runs_financial_fact_end_to_end(
         in state.answer.answer_text
     )
 
+    assert (
+        state.answer_draft
+        is not None
+    )
+
+    assert (
+        state.answer_draft
+        .claims[0]
+        .claim_text
+        ==
+        "美的集团2024年"
+        "营业收入为407149600000元"
+    )
+
     assert tuple(
         span.node_name
         for span
@@ -444,9 +476,21 @@ def test_graph_runs_financial_fact_end_to_end(
         "create_plan",
         "execute_plan",
         "verify_evidence",
+        "prepare_answer",
+        "verify_answer",
         "generate_answer",
     )
 
+    assert (
+        state.verification_report
+        is not None
+    )
+
+    assert (
+        state.verification_report
+        .passed
+        is True
+    )
     latest = (
         checkpoint_store
         .load_latest(
@@ -688,7 +732,20 @@ def test_graph_interrupt_resumes_with_corrected_query(
         "create_plan",
         "execute_plan",
         "verify_evidence",
+        "prepare_answer",
+        "verify_answer",
         "generate_answer",
+    )
+
+    assert (
+        state.verification_report
+        is not None
+    )
+
+    assert (
+        state.verification_report
+        .passed
+        is True
     )
 
     trajectory = (

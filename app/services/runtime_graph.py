@@ -456,6 +456,8 @@ def _apply_human_decision(
             "resolved_fact_ids": (),
             "evidence_ids": (),
             "calculation_ids": (),
+            "answer_draft": None,
+            "verification_report": None,
             "answer": None,
             "citations": (),
             "status": "created",
@@ -728,6 +730,76 @@ def build_agent_runtime_graph(
             state
         )
 
+    def prepare_answer_node(
+        graph_state: RuntimeGraphState,
+    ) -> RuntimeGraphState:
+        """把 Runtime 产物转换成可验证的 AnswerDraft。"""
+
+        state = _load_state(
+            graph_state
+        )
+
+        try:
+            state = (
+                runtime
+                ._run_prepare_answer_node(
+                    state
+                )
+            )
+
+            state = _persist_state(
+                runtime,
+                state,
+            )
+
+        except Exception as exc:
+            state = (
+                _handle_node_error(
+                    runtime=runtime,
+                    state=state,
+                    error=exc,
+                )
+            )
+
+        return _dump_state(
+            state
+        )
+
+    def verify_answer_node(
+        graph_state: RuntimeGraphState,
+    ) -> RuntimeGraphState:
+        """执行 AnswerDraft 的可信校验。"""
+
+        state = _load_state(
+            graph_state
+        )
+
+        try:
+            state = (
+                runtime
+                ._run_verify_answer_node(
+                    state
+                )
+            )
+
+            state = _persist_state(
+                runtime,
+                state,
+            )
+
+        except Exception as exc:
+            state = (
+                _handle_node_error(
+                    runtime=runtime,
+                    state=state,
+                    error=exc,
+                )
+            )
+
+        return _dump_state(
+            state
+        )
+
     def generate_answer_node(
         graph_state: RuntimeGraphState,
     ) -> RuntimeGraphState:
@@ -926,6 +998,37 @@ def build_agent_runtime_graph(
         if _is_terminal(state):
             return "finish"
 
+        return "prepare_answer"
+
+    def after_prepare_answer(
+        graph_state: RuntimeGraphState,
+    ) -> str:
+        state = _load_state(
+            graph_state
+        )
+
+        if _is_terminal(
+            state
+        ):
+            return "finish"
+
+        return "verify_answer"
+
+    def after_verify_answer(
+        graph_state: RuntimeGraphState,
+    ) -> str:
+        state = _load_state(
+            graph_state
+        )
+
+        # Verification 不通过时，
+        # _run_verify_answer_node 已经把
+        # State 变成 refused。
+        if _is_terminal(
+            state
+        ):
+            return "finish"
+
         return "generate_answer"
 
     def after_generate(
@@ -968,6 +1071,16 @@ def build_agent_runtime_graph(
     builder.add_node(
         "verify_evidence",
         verify_evidence_node,
+    )
+
+    builder.add_node(
+        "prepare_answer",
+        prepare_answer_node,
+    )
+
+    builder.add_node(
+        "verify_answer",
+        verify_answer_node,
     )
 
     builder.add_node(
@@ -1043,6 +1156,28 @@ def build_agent_runtime_graph(
     builder.add_conditional_edges(
         "verify_evidence",
         after_verify,
+        {
+            "prepare_answer": (
+                "prepare_answer"
+            ),
+            "finish": "finish",
+        },
+    )
+
+    builder.add_conditional_edges(
+        "prepare_answer",
+        after_prepare_answer,
+        {
+            "verify_answer": (
+                "verify_answer"
+            ),
+            "finish": "finish",
+        },
+    )
+
+    builder.add_conditional_edges(
+        "verify_answer",
+        after_verify_answer,
         {
             "generate_answer": (
                 "generate_answer"

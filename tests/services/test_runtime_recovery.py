@@ -76,6 +76,9 @@ from app.services.trajectory_store import (
 from app.services.runtime_answer_draft import (
     RuntimeAnswerDraftBuilder,
 )
+from app.services.runtime_trust_verifier import (
+    RuntimeTrustVerifier,
+)
 
 class FixedClock:
     def now(
@@ -493,6 +496,11 @@ def _build_runtime(
         ),
         answer_draft_builder=(
             RuntimeAnswerDraftBuilder(
+                registry_bundle=bundle
+            )
+        ),
+        trust_verifier=(
+            RuntimeTrustVerifier(
                 registry_bundle=bundle
             )
         ),
@@ -1032,6 +1040,7 @@ def test_recovered_calculation_trajectory_can_be_replayed(
         "execute_plan",
         "verify_evidence",
         "prepare_answer",
+        "verify_answer",
         "generate_answer",
     )
 

@@ -98,6 +98,9 @@ from app.services.trajectory_store import (
 from app.services.runtime_answer_draft import (
     RuntimeAnswerDraftBuilder,
 )
+from app.services.runtime_trust_verifier import (
+    RuntimeTrustVerifier,
+)
 
 class RuntimeEvalError(
     ValueError
@@ -696,6 +699,11 @@ def build_runtime_eval_environment(
         ),
         answer_draft_builder=(
             RuntimeAnswerDraftBuilder(
+                registry_bundle=bundle
+            )
+        ),
+        trust_verifier=(
+            RuntimeTrustVerifier(
                 registry_bundle=bundle
             )
         ),
