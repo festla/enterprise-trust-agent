@@ -384,3 +384,43 @@ def test_unknown_request_is_unsupported(
         )
         == "unsupported"
     )
+
+def test_write_operation_is_unsupported(
+) -> None:
+    router = _build_router()
+
+    parsed_query = _build_query(
+        metric_ids=(
+            "revenue",
+        ),
+        question=(
+            "帮我修改美的集团年报中的"
+            "营业收入数据"
+        ),
+    )
+
+    assert (
+        router.route(
+            parsed_query
+        )
+        == "unsupported"
+    )
+
+def test_document_question_about_modification_is_not_blocked(
+) -> None:
+    router = _build_router()
+
+    parsed_query = _build_query(
+        explanation_requested=True,
+        question=(
+            "美的集团2024年"
+            "管理层为什么修改经营战略？"
+        ),
+    )
+
+    assert (
+        router.route(
+            parsed_query
+        )
+        == "document_evidence"
+    )

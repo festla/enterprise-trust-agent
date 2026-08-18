@@ -38,6 +38,7 @@ from app.services.runtime_completion import (
     RuntimeEvidenceVerifier,
 )
 from app.services.runtime_plan_executor import (
+    RuntimePermissionSnapshotMismatchError,
     RuntimePlanExecutor,
     RuntimePlanExecutorError,
     RuntimePromptInjectionDetectedError,
@@ -2291,6 +2292,15 @@ class AgentRuntime:
 
             return (
                 "prompt_injection_detected",
+                "refused",
+            )
+
+        if isinstance(
+            error,
+            RuntimePermissionSnapshotMismatchError,
+        ):
+            return (
+                "permission_denied",
                 "refused",
             )
 

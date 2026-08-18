@@ -263,3 +263,243 @@ class SafetyEvalCase(
             )
 
         return self
+
+SafetyActualOutcome = Literal[
+    "allow",
+    "deny",
+    "detect",
+    "refuse",
+    "require_human",
+    "error",
+]
+
+class SafetyEvalCaseResult(
+    BaseModel
+):
+    """一条 Week7 Safety Eval 的实际执行结果。"""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+    )
+
+    schema_version: Literal[1] = 1
+
+    case_id: str = Field(
+        pattern=r"^safety_[0-9]{3}$",
+    )
+
+    category: SafetyEvalCategory
+
+    scenario: SafetyScenario
+
+    adversarial: bool
+
+    expected_control: SafetyControl
+
+    expected_outcome: (
+        SafetyExpectedOutcome
+    )
+
+    actual_outcome: (
+        SafetyActualOutcome
+    )
+
+    expected_stop_reason: (
+        StopReason | None
+    ) = None
+
+    actual_stop_reason: (
+        StopReason | None
+    ) = None
+
+    expected_issue_type: (
+        VerificationIssueType | None
+    ) = None
+
+    actual_issue_types: tuple[
+        VerificationIssueType,
+        ...
+    ] = ()
+
+    expected_rule_ids: tuple[
+        str,
+        ...
+    ] = ()
+
+    actual_rule_ids: tuple[
+        str,
+        ...
+    ] = ()
+
+    expected_policy_action: (
+        PolicyAction | None
+    ) = None
+
+    actual_policy_action: (
+        PolicyAction | None
+    ) = None
+
+    answer_released: bool = False
+
+    outcome_ok: bool
+
+    stop_reason_ok: bool
+
+    issue_ok: bool
+
+    rule_ids_ok: bool
+
+    policy_ok: bool
+
+    unsafe_answer_released: bool
+
+    case_pass: bool
+
+    error_message: str | None = Field(
+        default=None,
+        max_length=2000,
+    )
+
+class SafetyEvalSummary(
+    BaseModel
+):
+    """Week7 40-case Safety Eval 指标汇总。"""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+    )
+
+    schema_version: Literal[1] = 1
+
+    eval_name: str = (
+        "week7_safety_eval_v1"
+    )
+
+    case_count: int = Field(
+        ge=1,
+    )
+
+    passed_count: int = Field(
+        ge=0,
+    )
+
+    adversarial_count: int = Field(
+        ge=0,
+    )
+
+    normal_safe_count: int = Field(
+        ge=0,
+    )
+
+    # ========================================================
+    # Unsafe Answer Release Rate
+    # ========================================================
+
+    unsafe_release_applicable_count: int = Field(
+        ge=0,
+    )
+
+    unsafe_answer_release_count: int = Field(
+        ge=0,
+    )
+
+    unsafe_answer_release_rate: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+
+    # ========================================================
+    # False Refusal Rate
+    # ========================================================
+
+    false_refusal_applicable_count: int = Field(
+        ge=0,
+    )
+
+    false_refusal_count: int = Field(
+        ge=0,
+    )
+
+    false_refusal_rate: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+
+    # ========================================================
+    # Trust Violation Detection Rate
+    # ========================================================
+
+    trust_violation_applicable_count: int = Field(
+        ge=0,
+    )
+
+    trust_violation_detected_count: int = Field(
+        ge=0,
+    )
+
+    trust_violation_detection_rate: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+
+    # ========================================================
+    # Prompt Injection Detection Rate
+    # ========================================================
+
+    prompt_injection_applicable_count: int = Field(
+        ge=0,
+    )
+
+    prompt_injection_detected_count: int = Field(
+        ge=0,
+    )
+
+    prompt_injection_detection_rate: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+
+    # ========================================================
+    # Permission Denial Accuracy
+    # ========================================================
+
+    permission_denial_applicable_count: int = Field(
+        ge=0,
+    )
+
+    permission_denial_correct_count: int = Field(
+        ge=0,
+    )
+
+    permission_denial_accuracy: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+
+    # ========================================================
+    # HITL Routing Accuracy
+    # ========================================================
+
+    hitl_applicable_count: int = Field(
+        ge=0,
+    )
+
+    hitl_routing_correct_count: int = Field(
+        ge=0,
+    )
+
+    hitl_routing_accuracy: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+
+    # ========================================================
+    # Overall
+    # ========================================================
+
+    overall_safety_success_rate: float = Field(
+        ge=0.0,
+        le=1.0,
+    )

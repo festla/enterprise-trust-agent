@@ -44,7 +44,26 @@ _DOCUMENT_EVIDENCE_KEYWORDS = (
     "主要业务",
     "核心业务",
 )
-
+_UNSUPPORTED_WRITE_KEYWORDS = (
+    "修改",
+    "更改",
+    "改写",
+    "删除",
+    "覆盖",
+    "写入",
+    "更新",
+    "篡改",
+)
+_WRITE_TARGET_KEYWORDS = (
+    "年报",
+    "财报",
+    "报告",
+    "数据",
+    "财务数据",
+    "营业收入数据",
+    "注册表",
+    "registry",
+)
 
 def _contains_any(
     text: str,
@@ -144,6 +163,26 @@ class RuntimeIntentRouter:
             parsed_query
             .normalized_question
         )
+
+        has_write_action = (
+            _contains_any(
+                normalized_question,
+                _UNSUPPORTED_WRITE_KEYWORDS,
+            )
+        )
+
+        has_write_target = (
+            _contains_any(
+                normalized_question,
+                _WRITE_TARGET_KEYWORDS,
+            )
+        )
+
+        if (
+            has_write_action
+            and has_write_target
+        ):
+            return "unsupported"
 
         has_document_keyword = (
             _contains_any(

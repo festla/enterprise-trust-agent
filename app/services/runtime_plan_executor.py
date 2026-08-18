@@ -77,6 +77,11 @@ class RuntimePlanExecutorError(
             calculation_trace
         )
 
+class RuntimePermissionSnapshotMismatchError(
+    RuntimePlanExecutorError
+):
+    """AgentState 中的 RBAC 权限快照与真实 Role 权限不一致。"""
+
 class RuntimePromptInjectionDetectedError(
     RuntimePlanExecutorError
 ):
@@ -352,10 +357,12 @@ class RuntimePlanExecutor:
             recorded_permissions
             != effective_permissions
         ):
-            raise RuntimePlanExecutorError(
-                "AgentState RBAC 权限快照"
-                "与 user_role 不一致："
-                f"role={state.user_role}"
+            raise (
+                RuntimePermissionSnapshotMismatchError(
+                    "AgentState RBAC 权限快照"
+                    "与 user_role 不一致："
+                    f"role={state.user_role}"
+                )
             )
 
         return effective_permissions
