@@ -939,9 +939,9 @@ def _build_state_ready_for_verify_answer(
     )
 
 
-def test_verify_answer_node_passes_to_generator(
+def test_verify_answer_node_passes_to_policy(
 ) -> None:
-    """Trust Verification 通过后才能进入 Generator。"""
+    """Trust Verification 通过后必须先进入 Risk Policy。"""
 
     report = VerificationReport(
         passed=True,
@@ -1003,7 +1003,7 @@ def test_verify_answer_node_passes_to_generator(
 
     assert (
         updated_state.next_node
-        == "generate_answer"
+        == "evaluate_policy"
     )
 
     assert (

@@ -101,6 +101,10 @@ from app.services.runtime_answer_draft import (
 from app.services.runtime_trust_verifier import (
     RuntimeTrustVerifier,
 )
+from app.services.runtime_policy import (
+    RuntimeRiskPolicy,
+)
+
 
 class RuntimeEvalError(
     ValueError
@@ -706,6 +710,9 @@ def build_runtime_eval_environment(
             RuntimeTrustVerifier(
                 registry_bundle=bundle
             )
+        ),
+        risk_policy=(
+            RuntimeRiskPolicy()
         ),
         answer_generator=(
             RuntimeAnswerGenerator(

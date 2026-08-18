@@ -59,6 +59,9 @@ from app.services.runtime_intent_router import (
 from app.services.runtime_plan_executor import (
     RuntimePlanExecutor,
 )
+from app.services.runtime_policy import (
+    RuntimeRiskPolicy,
+)
 from app.services.runtime_planner import (
     RuntimePlanner,
 )
@@ -504,6 +507,13 @@ def _build_runtime(
                 registry_bundle=bundle
             )
         ),
+
+        risk_policy=(
+            RuntimeRiskPolicy(
+                id_factory=id_factory
+            )
+        ),
+
         answer_generator=(
             RuntimeAnswerGenerator(
                 registry_bundle=bundle,
@@ -1041,6 +1051,7 @@ def test_recovered_calculation_trajectory_can_be_replayed(
         "verify_evidence",
         "prepare_answer",
         "verify_answer",
+        "evaluate_policy",
         "generate_answer",
     )
 

@@ -83,6 +83,10 @@ from app.services.runtime_answer_draft import (
 from app.services.runtime_trust_verifier import (
     RuntimeTrustVerifier,
 )
+from app.services.runtime_policy import (
+    RuntimeRiskPolicy,
+)
+
 class FixedClock:
     def now(
         self,
@@ -533,6 +537,14 @@ def _build_runtime(
         id_factory=id_factory,
     )
 
+    risk_policy = (
+        RuntimeRiskPolicy(
+            id_factory=(
+                id_factory
+            )
+        )
+    )
+
     answer_draft_builder = (
         RuntimeAnswerDraftBuilder(
             registry_bundle=bundle
@@ -580,6 +592,9 @@ def _build_runtime(
         ),
         answer_generator=(
             answer_generator
+        ),
+        risk_policy=(
+            risk_policy
         ),
         checkpoint_store=(
             checkpoint_store
@@ -631,6 +646,21 @@ def test_financial_fact_runs_end_to_end(
     assert (
         state.stop_reason
         == "completed"
+    )
+
+    assert (
+        state.risk_level
+        == "low"
+    )
+
+    assert (
+        state.policy_decision
+        is not None
+    )
+
+    assert (
+        state.policy_decision.action
+        == "allow"
     )
 
     assert state.answer is not None
@@ -978,6 +1008,21 @@ def test_calculation_runs_end_to_end(
     assert state.status == "completed"
 
     assert (
+        state.risk_level
+        == "medium"
+    )
+
+    assert (
+        state.policy_decision
+        is not None
+    )
+
+    assert (
+        state.policy_decision.action
+        == "allow"
+    )
+
+    assert (
         state.user_role
         == "reviewer"
     )
@@ -1051,6 +1096,21 @@ def test_document_query_runs_end_to_end(
         == (
             "chunk_midea_2024_risk"
         )
+    )
+
+    assert (
+        state.risk_level
+        == "medium"
+    )
+
+    assert (
+        state.policy_decision
+        is not None
+    )
+
+    assert (
+        state.policy_decision.action
+        == "allow"
     )
 
 def test_prompt_injection_is_refused_and_audited(
@@ -1469,4 +1529,61 @@ def test_checkpoint_tracks_runtime_progress(
     assert (
         latest.revision
         == state.checkpoint_revision
+    )
+
+def test_policy_decision_is_saved_to_trajectory(
+    tmp_path: Path,
+) -> None:
+    (
+        runtime,
+        _,
+        trajectory_store,
+    ) = _build_runtime(
+        tmp_path
+    )
+
+    state = runtime.run(
+        query=(
+            "美的集团2024年"
+            "营业收入是多少？"
+        )
+    )
+
+    assert (
+        state.status
+        == "completed"
+    )
+
+    trajectory = (
+        trajectory_store.load(
+            state.run_id
+        )
+    )
+
+    assert (
+        trajectory.risk_level
+        == "low"
+    )
+
+    assert (
+        trajectory.policy_decision
+        is not None
+    )
+
+    assert (
+        trajectory
+        .policy_decision
+        .action
+        == "allow"
+    )
+
+    node_names = tuple(
+        span.node_name
+        for span
+        in trajectory.node_spans
+    )
+
+    assert (
+        "evaluate_policy"
+        in node_names
     )

@@ -28,6 +28,8 @@ from app.schemas.tool_registry import (
 )
 from app.schemas.trust import (
     AnswerDraft,
+    PolicyDecision,
+    RiskLevel,
     UserRole,
     VerificationReport,
 )
@@ -68,6 +70,7 @@ StopReason = Literal[
     "insufficient_evidence",
     "permission_denied",
     "prompt_injection_detected",
+    "policy_refused",
     "tool_failure",
     "tool_timeout",
     "max_steps_exceeded",
@@ -92,6 +95,7 @@ RuntimeNode = Literal[
     "verify_evidence",
     "prepare_answer",
     "verify_answer",
+    "evaluate_policy",
     "generate_answer",
     "await_human",
     "handle_failure",
@@ -1237,6 +1241,14 @@ class AgentState(BaseModel):
         VerificationReport | None
     ) = None
 
+    risk_level: (
+        RiskLevel | None
+    ) = None
+
+    policy_decision: (
+        PolicyDecision | None
+    ) = None
+
     answer: AgentAnswer | None = None
 
     citations: tuple[
@@ -1834,6 +1846,14 @@ class AgentTrajectory(BaseModel):
 
     verification_report: (
         VerificationReport | None
+    ) = None
+
+    risk_level: (
+        RiskLevel | None
+    ) = None
+
+    policy_decision: (
+        PolicyDecision | None
     ) = None
 
     errors: tuple[

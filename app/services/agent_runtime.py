@@ -23,6 +23,8 @@ from app.schemas.agent_runtime import (
     RuntimePlan,
 )
 from app.schemas.trust import (
+    PolicyDecision,
+    RiskLevel,
     UserRole,
 )
 from app.services.checkpoint_store import (
@@ -58,6 +60,10 @@ from app.services.runtime_trust_verifier import (
 from app.services.runtime_access_control import (
     RuntimeAccessController,
 )
+from app.services.runtime_policy import (
+    RuntimeRiskPolicy,
+)
+
 
 class AgentRuntimeError(
     ValueError
@@ -208,6 +214,10 @@ class AgentRuntime:
 
     trust_verifier: (
         RuntimeTrustVerifier | None
+    ) = None
+
+    risk_policy: (
+        RuntimeRiskPolicy | None
     ) = None
 
     answer_generator: (
@@ -692,6 +702,25 @@ class AgentRuntime:
                     )
 
                     continue
+
+                if (
+                    next_node
+                    == "evaluate_policy"
+                ):
+                    state = (
+                        self._run_policy_node(
+                            state
+                        )
+                    )
+
+                    state = (
+                        self._persist_checkpoint(
+                            state
+                        )
+                    )
+
+                    continue
+
                 if (
                     next_node
                     == "generate_answer"
@@ -1302,7 +1331,7 @@ class AgentRuntime:
         #     ↓
         # VerificationReport(PASS)
         #     ↓
-        # generate_answer
+        # evaluate_policy
         # ========================================================
 
         if (
@@ -1318,7 +1347,7 @@ class AgentRuntime:
                     "verify_answer"
                 ),
                 next_node=(
-                    "generate_answer"
+                    "evaluate_policy"
                 ),
                 node_spans=(
                     state.node_spans
@@ -1381,6 +1410,285 @@ class AgentRuntime:
                 completed_at
             ),
 
+            updated_at=(
+                completed_at
+            ),
+        )
+
+    @staticmethod
+    def _risk_level_for_state(
+        state: AgentState,
+    ) -> RiskLevel:
+        """根据当前受支持 Intent 做第一版确定性风险分级。"""
+
+        intent = state.intent
+
+        if intent == "financial_fact":
+            return "low"
+
+        if intent in {
+            "financial_calculation",
+            "financial_comparison",
+            "document_evidence",
+        }:
+            return "medium"
+
+        raise AgentRuntimeError(
+            "无法为当前 Intent 分配 RiskLevel："
+            f"{intent}"
+        )
+
+    def _run_policy_node(
+        self,
+        state: AgentState,
+    ) -> AgentState:
+        """执行可信校验后的确定性 Risk Policy。"""
+
+        if self.risk_policy is None:
+            raise AgentRuntimeError(
+                "evaluate_policy 需要配置 "
+                "risk_policy"
+            )
+
+        if (
+            state.status
+            != "verifying"
+        ):
+            raise AgentRuntimeError(
+                "只有 Verifying 状态才能进入 "
+                "evaluate_policy"
+            )
+
+        if (
+            state.verification_report
+            is None
+        ):
+            raise AgentRuntimeError(
+                "evaluate_policy 缺少 "
+                "verification_report"
+            )
+
+        if (
+            state.answer_draft
+            is None
+        ):
+            raise AgentRuntimeError(
+                "evaluate_policy 缺少 "
+                "answer_draft"
+            )
+
+        if (
+            state.step_count
+            >= state.max_steps
+        ):
+            raise AgentRuntimeError(
+                "Runtime 已达到 max_steps"
+            )
+
+        started_at = (
+            self.clock.now()
+        )
+
+        timer_start = (
+            perf_counter()
+        )
+
+        risk_level = (
+            self._risk_level_for_state(
+                state
+            )
+        )
+
+        claim_ids = tuple(
+            claim.claim_id
+            for claim
+            in state.answer_draft.claims
+        )
+
+        decision = (
+            self.risk_policy.evaluate(
+                risk_level=risk_level,
+                verification_report=(
+                    state
+                    .verification_report
+                ),
+                claim_ids=claim_ids,
+            )
+        )
+
+        completed_at = (
+            self.clock.now()
+        )
+
+        span = (
+            self._build_completed_span(
+                node_name=(
+                    "evaluate_policy"
+                ),
+                input_summary={
+                    "intent": (
+                        state.intent
+                    ),
+                    "risk_level": (
+                        risk_level
+                    ),
+                    "verification_passed": (
+                        state
+                        .verification_report
+                        .passed
+                    ),
+                    "claim_count": len(
+                        claim_ids
+                    ),
+                },
+                output_summary={
+                    "action": (
+                        decision.action
+                    ),
+                    "risk_level": (
+                        decision.risk_level
+                    ),
+                    "requires_human": (
+                        decision.action
+                        == "require_human"
+                    ),
+                },
+                started_at=started_at,
+                completed_at=completed_at,
+                timer_start=timer_start,
+                checkpoint_revision=(
+                    state
+                    .checkpoint_revision
+                ),
+            )
+        )
+
+        # ========================================================
+        # ALLOW
+        # ========================================================
+
+        if decision.action == "allow":
+            return self._replace_state(
+                state,
+                risk_level=(
+                    risk_level
+                ),
+                policy_decision=(
+                    decision
+                ),
+                status="verifying",
+                current_node=(
+                    "evaluate_policy"
+                ),
+                next_node=(
+                    "generate_answer"
+                ),
+                node_spans=(
+                    state.node_spans
+                    + (
+                        span,
+                    )
+                ),
+                step_count=(
+                    state.step_count
+                    + 1
+                ),
+                updated_at=(
+                    completed_at
+                ),
+            )
+
+        # ========================================================
+        # REFUSE
+        # ========================================================
+
+        if decision.action == "refuse":
+            return self._replace_state(
+                state,
+                risk_level=(
+                    risk_level
+                ),
+                policy_decision=(
+                    decision
+                ),
+                answer=None,
+                status="refused",
+                stop_reason=(
+                    "policy_refused"
+                ),
+                pending_human_review=False,
+                human_review_reason=None,
+                current_node=(
+                    "evaluate_policy"
+                ),
+                next_node="finish",
+                node_spans=(
+                    state.node_spans
+                    + (
+                        span,
+                    )
+                ),
+                step_count=(
+                    state.step_count
+                    + 1
+                ),
+                completed_at=(
+                    completed_at
+                ),
+                updated_at=(
+                    completed_at
+                ),
+            )
+
+        # ========================================================
+        # REQUIRE HUMAN
+        #
+        # Step6.2 先完成 Routing。
+        # Step6.3 再处理 approve / reject / resume。
+        # ========================================================
+
+        human_review = (
+            decision.human_review
+        )
+
+        if human_review is None:
+            raise AgentRuntimeError(
+                "require_human 缺少 "
+                "HumanReviewRequest"
+            )
+
+        return self._replace_state(
+            state,
+            risk_level=(
+                risk_level
+            ),
+            policy_decision=(
+                decision
+            ),
+            status="awaiting_human",
+            stop_reason=(
+                "human_review_required"
+            ),
+            pending_human_review=True,
+            human_review_reason=(
+                human_review.reason
+            ),
+            current_node=(
+                "await_human"
+            ),
+            next_node=(
+                "await_human"
+            ),
+            node_spans=(
+                state.node_spans
+                + (
+                    span,
+                )
+            ),
+            step_count=(
+                state.step_count
+                + 1
+            ),
             updated_at=(
                 completed_at
             ),
@@ -1990,6 +2298,12 @@ class AgentRuntime:
             verification_report=(
                 state.verification_report
             ),
+            risk_level=(
+                state.risk_level
+            ),
+            policy_decision=(
+                state.policy_decision
+            ),
             errors=state.errors,
             answer=state.answer,
             input_tokens=(
@@ -2054,6 +2368,11 @@ class AgentRuntime:
         if self.verifier is None:
             missing.append(
                 "verifier"
+            )
+
+        if self.risk_policy is None:
+            missing.append(
+                "risk_policy"
             )
 
         if self.answer_generator is None:
