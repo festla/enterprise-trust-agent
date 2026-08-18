@@ -1,48 +1,53 @@
 # Enterprise Trust Agent
 
-面向企业年报与可信财务分析场景的可审计文档 Agent。
+面向企业年报与财务分析场景的 **可信、可验证、可追溯 Agent Runtime**。
 
-项目目标不是让大模型直接生成所有答案，而是将文档检索、结构化财务事实、确定性计算、Agent 规划、工具执行、状态恢复、证据验证与轨迹审计组合成一套可验证、可恢复、可追踪的企业文档分析 Runtime。
+项目不让大模型自由生成财务事实，而是将 **结构化财务数据、文档检索、确定性计算、Agent 规划、证据验证、权限控制与安全审计** 组合成一套可执行、可恢复、可审计的企业文档分析系统。
 
 ---
 
 ## 1. Current Status
 
-当前项目完成至：
+当前完成至：
 
-**Week 6 — Auditable Agent Runtime**
+**Week 7 — Trust, Safety & Responsible AI Controls**
 
-当前工程回归：
+工程回归：
 
 ```text
-841 passed
+963 passed
 ```
 
-Week 6 Runtime Control Dev V1：
+Runtime Control Dev V1：
 
 ```text
 Cases:                    50
 Passed:                   50 / 50
-
-Intent Accuracy:          100.00%
-Argument Accuracy:        100.00%
-Plan Accuracy:            100.00%
-Tool Accuracy:            100.00%
-Tool Sequence Accuracy:   100.00%
-Termination Accuracy:     100.00%
-Task Success Rate:        100.00%
+Task Success Rate:        100%
 Replay Success:           46 / 46
 ```
 
-需要注意：
+Week 7 Safety Eval V1：
 
-> 这里的 100% 表示固定 Runtime Control Dev Set 上的控制流行为符合预期，并不代表真实 Retrieval、Citation 和最终 Answer Quality 已经达到 100%。
+```text
+Cases:                             40
+Passed:                            40 / 40
+
+Trust Violation Detection Rate:    100%
+Prompt Injection Detection Rate:   100%
+Permission Denial Accuracy:        100%
+HITL Routing Accuracy:             100%
+
+False Refusal Rate:                  0%
+Unsafe Answer Release Rate:          0%
+Overall Safety Success Rate:       100%
+```
+
+> 以上结果仅代表当前固定评测集上的表现，不表示系统对所有真实场景或攻击达到绝对安全。
 
 ---
 
 ## 2. Project Architecture
-
-当前核心链路：
 
 ```text
 User Query
@@ -53,23 +58,35 @@ RuntimeIntentRouter
     ↓
 RuntimePlanner
     ↓
-RuntimePlan
-    ↓
-AgentRuntime / LangGraph
+RBAC / Permission Gate
     ↓
 RuntimePlanExecutor
     ├── query_financial_data
     ├── retrieve_documents
     └── execute_calculation
     ↓
+Prompt Injection Defense
+    ↓
 RuntimeEvidenceVerifier
     ↓
+RuntimeAnswerDraftBuilder
+    ↓
+RuntimeTrustVerifier
+    ↓
+RuntimeRiskPolicy
+  ↙       ↓        ↘
+allow    refuse   require_human
+                      ↓
+                     HITL
+                      ↓
 RuntimeAnswerGenerator
+    ↓
+Generator Hard Gate
     ↓
 Final Answer
 ```
 
-运行过程同时记录：
+运行过程同时保存：
 
 ```text
 AgentState
@@ -78,174 +95,44 @@ NodeSpan
 ToolCallTrace
 RetrievalTrace
 CalculationTrace
+VerificationReport
+PolicyDecision
+HumanReviewDecision
 AgentTrajectory
 ```
 
 ---
 
-## 3. Runtime Query Understanding
+## 3. Core Capabilities
 
-### RuntimeQueryParser
+### Structured Financial Query
 
-负责从用户自然语言中解析：
+支持：
 
-- company；
-- year；
-- report；
-- financial metric；
-- statement scope；
-- comparison；
-- ranking；
-- explanation；
-- missing fields。
+- 财务事实查询；
+- 财务指标计算；
+- 跨期比较；
+- 文档证据分析；
+- 缺失信息澄清；
+- 不支持问题拒答。
 
-Parser 不负责：
-
-- 查询数据库；
-- 检索文档；
-- 执行计算；
-- 生成最终答案。
-
-### RuntimeIntentRouter
-
-负责将问题分类为：
-
-```text
-financial_fact
-financial_calculation
-financial_comparison
-document_evidence
-unsupported
-```
-
-例如：
-
-```text
-美的集团2024年营业收入是多少？
-        ↓
-financial_fact
-```
-
-```text
-美的集团2024年毛利率是多少？
-        ↓
-financial_calculation
-```
-
-```text
-为什么美的集团2024年营业收入增长？
-        ↓
-document_evidence
-```
-
----
-
-## 4. Runtime Planner
-
-Planner 根据 Parsed Query 和 Intent 生成明确的 RuntimePlan。
-
-计划中的动作包括：
-
-```text
-retrieve
-calculate
-compare
-rank
-synthesize
-```
-
-例如毛利率：
-
-```text
-User:
-美的集团2024年毛利率是多少？
-
-        ↓
-
-q1: revenue
-q2: operating_cost
-
-        ↓
-
-s1: query_financial_data
-s2: query_financial_data
-
-        ↓
-
-s3: execute_calculation
-```
-
-Planner 只描述：
-
-> 应该获取什么、应该执行什么。
-
-它不会提前知道真正得到的 `fact_id`。
-
----
-
-## 5. Tool Registry
-
-Runtime 当前包含三个核心 Production Tool。
-
-### 5.1 query_financial_data
-
-用于查询经过验证的结构化财务事实。
-
-主要约束：
-
-- 只使用 FinancialFact Registry；
-- 优先使用 verified Fact；
-- 返回对应 Evidence；
-- 数值不允许由语言模型自由生成。
-
-结构化数值问题遵循：
-
-```text
-User Question
-      ↓
-Planner
-      ↓
-query_financial_data
-      ↓
-FinancialFact
-      ↓
-Verified Numeric Value
-```
-
----
-
-### 5.2 retrieve_documents
-
-用于查询年报中的叙述性证据。
-
-当前检索链路：
+### Hybrid Document Retrieval
 
 ```text
 Dense Retrieval
-      +
++
 BM25
-      ↓
+↓
 RRF Fusion
-      ↓
+↓
 Cross-Encoder Reranker
-      ↓
-RetrievedDocument
 ```
 
-适用于：
+用于风险、战略、管理层说明、经营情况和原因归因等叙述性问题。
 
-- 风险分析；
-- 管理层说明；
-- 战略；
-- 经营情况；
-- 原因归因；
-- 未来展望。
+### Deterministic Calculation
 
----
-
-### 5.3 execute_calculation
-
-用于执行确定性财务指标计算。
+派生指标由确定性 Calculator 计算，而不是由 LLM 自由生成数值。
 
 例如：
 
@@ -253,592 +140,238 @@ RetrievedDocument
 Revenue
 +
 Operating Cost
-      ↓
+↓
 Gross Profit Margin
 ```
 
-计算过程保留：
+计算过程保留 `formula_id`、`input_fact_ids`、结果和 Calculation Trace。
 
-- calculation_id；
-- formula_id；
-- input_fact_ids；
-- result；
-- result_unit；
-- calculation trace。
+### Recoverable Agent Runtime
 
-当前已支持多种派生指标，包括：
-
-- gross profit margin；
-- current ratio；
-- debt-to-equity ratio；
-- operating cash flow / net profit；
-- selling + R&D expense ratio；
-- effective income tax rate。
-
----
-
-## 6. Tool Execution Control
-
-所有 Tool 通过统一 Tool Registry 和 ToolExecutor 执行。
-
-Tool Definition 包含：
+支持：
 
 ```text
-tool_name
-version
-input_schema
-output_schema
-permission
-timeout
-max_retries
-idempotent
-max_result_bytes
-```
-
-Runtime 因此可以统一处理：
-
-- Schema Validation；
-- Permission；
-- Timeout；
-- Retry；
-- Idempotency；
-- Result Size；
-- ToolCallTrace。
-
----
-
-## 7. AgentState
-
-Agent 的运行状态统一保存在 `AgentState` 中。
-
-主要信息包括：
-
-```text
-query
-parsed_query
-intent
-runtime_plan
-
-current_step
-completed_step_ids
-runtime_refs
-
-tool_call_traces
-retrieval_traces
-calculation_traces
-
-resolved_fact_ids
-evidence_ids
-calculation_ids
-citations
-
-status
-stop_reason
-
-retry_count
-errors
-
-current_node
-next_node
-
-checkpoint_revision
-```
-
-因此 Agent 的执行过程不是隐藏在 Python 调用栈中的，而是可以：
-
-```text
-serialize
-↓
+run
+resume
 checkpoint
-↓
-recover
-↓
-replay
+idempotency
+trajectory replay
 ```
+
+Agent 中断后可以从 Checkpoint 恢复，已成功执行的步骤不会无条件重复执行。
 
 ---
 
-## 8. Agent Runtime
+## 4. Trust & Safety
 
-Runtime 提供两条主要入口：
+Week 7 增加多层独立安全控制。
 
-```python
-runtime.run(...)
-```
+### Trust Verification
 
-以及：
+最终答案先生成结构化 `AnswerDraft / Claim`，再验证：
 
-```python
-runtime.resume(...)
-```
+- Evidence 是否存在；
+- Claim 是否有事实支持；
+- 年份是否一致；
+- 单位是否一致；
+- 财务口径是否一致；
+- Calculation 输入是否一致；
+- Citation 是否匹配；
+- Evidence 是否冲突。
 
-`run()` 用于启动新的 Agent 运行。
+验证失败时直接拒绝发布答案。
 
-`resume()` 用于从已有 Checkpoint 继续执行。
+### RBAC
 
-Runtime 根据：
-
-```text
-next_node
-current_step
-completed_step_ids
-runtime_refs
-```
-
-判断恢复位置。
-
----
-
-## 9. Checkpoint
-
-当前支持：
+角色：
 
 ```text
-InMemoryCheckpointStore
-SQLiteCheckpointStore
+viewer
+reviewer
+admin
 ```
 
-Checkpoint 使用 append-only revision。
-
-例如：
+权限：
 
 ```text
-revision 1
-    ↓
-revision 2
-    ↓
-revision 3
+read_financial_data
+read_documents
+execute_calculation
 ```
 
-而不是不断覆盖同一个 State。
+模型选择 Tool 不等于拥有 Tool 权限，Runtime 会基于真实 UserRole 重新计算有效权限。
 
-同时使用 `expected_revision` 做乐观并发控制。
+### Prompt Injection Defense
 
----
+Retrieved Document 被视为 **Untrusted External Data**。
 
-## 10. Recovery
-
-Checkpoint 主要解决：
-
-> Agent 中断以后从哪里继续？
-
-例如：
+当前检测：
 
 ```text
-s1 completed
-      ↓
-Checkpoint
-current_step = 1
-      ↓
-Process Crash
-      ↓
-resume()
-      ↓
-continue from s2
+instruction_override
+system_prompt_extraction
+authority_hijacking
+tool_manipulation
+security_bypass
 ```
 
-已经写入 Checkpoint 的步骤不会从头重新执行。
+恶意文档在进入可信 Runtime State 前被拦截。
 
----
-
-## 11. Idempotency
-
-Checkpoint 和 Idempotency 解决的是两个不同的问题。
-
-### Checkpoint
-
-解决：
-
-> 从哪里继续？
-
-### Idempotency
-
-解决：
-
-> Tool 已经成功，但成功结果还没有写入 Checkpoint 时发生崩溃怎么办？
-
-例如：
+### Risk Policy & HITL
 
 ```text
-s1 Tool succeeded
-      ↓
-Process Crash
-      ↓
-Checkpoint still before s1
-      ↓
-resume()
-      ↓
-Runtime requests s1 again
+Verification FAIL
+→ refuse
+
+Verification PASS + low / medium
+→ allow
+
+Verification PASS + high
+→ require_human
 ```
 
-ToolExecutor 使用稳定的 Idempotency Key：
+高风险任务可以进入人工审核：
 
 ```text
-run_id
+approve → resume → answer
+reject  → refused
+```
+
+人工审批不能覆盖 Trust Verification Failure。
+
+### Generator Hard Gate
+
+即使调用方绕过 AgentRuntime 直接调用 Answer Generator，也必须重新满足：
+
+```text
+Verification PASS
 +
-step_id
+Policy permits release
 +
-tool_name
-+
-arguments
-```
-
-如果执行上下文相同，可以复用已有结果：
-
-```text
-status = reused
-```
-
-从而避免重复副作用。
-
----
-
-## 12. LangGraph
-
-LangGraph 位于 Framework-independent Runtime 之上。
-
-整体关系：
-
-```text
-LangGraph
-    ↓
-AgentRuntime
-    ↓
-Business Services
-```
-
-而不是：
-
-```text
-Business Logic
-全部直接写入 Graph Node
-```
-
-LangGraph 主要负责：
-
-- StateGraph；
-- Node；
-- Edge；
-- Conditional Edge；
-- thread_id；
-- Checkpointer；
-- interrupt；
-- resume。
-
-核心业务逻辑仍由：
-
-```text
-Parser
-Router
-Planner
-RuntimePlanExecutor
-Verifier
-Generator
-```
-
-负责。
-
----
-
-## 13. Human Interrupt
-
-当关键字段缺失时：
-
-```text
-User Query
-    ↓
-Parser
-    ↓
-missing company / year
-    ↓
-awaiting_human
-    ↓
-LangGraph interrupt
-```
-
-用户补充信息后：
-
-```text
-Command(resume=...)
-      ↓
-same thread_id
-      ↓
-resume graph
-      ↓
-parse corrected query
-```
-
-用户也可以拒绝继续执行：
-
-```text
-human_rejected
+Human approval if required
 ```
 
 ---
 
-## 14. Failure Control
+## 5. Evaluation
 
-Runtime 当前区分：
+### Runtime Control Dev V1
 
-```text
-unsupported
-insufficient_evidence
-tool_failure
-tool_timeout
-calculation_failed
-max_steps_exceeded
-human_review_required
-human_rejected
-internal_error
-```
+固定 50-case 控制流评测，覆盖：
 
-每次终止都有：
-
-```text
-status
-+
-stop_reason
-```
-
-例如：
-
-```text
-status = refused
-stop_reason = insufficient_evidence
-```
-
-或者：
-
-```text
-status = failed
-stop_reason = tool_timeout
-```
-
-这样可以避免无休止 Agent Loop。
-
----
-
-## 15. Trajectory
-
-终止后的 Agent Run 会保存为 `AgentTrajectory`。
-
-Trajectory 包含：
-
-- Query；
 - Intent；
-- RuntimePlan；
-- NodeSpan；
-- ToolCallTrace；
-- RetrievalTrace；
-- CalculationTrace；
-- Fact IDs；
-- Evidence IDs；
-- Citation；
-- Error；
-- Answer；
-- latency；
-- final status；
-- stop reason。
-
-TrajectoryStore 支持：
-
-```text
-save
-load
-list
-export
-replay
-```
-
-Trajectory 采用 immutable save：
-
-> 同一个 run_id 的最终轨迹不能被静默覆盖。
-
----
-
-## 16. Runtime Replay
-
-Replay 用于从保存的 AgentTrajectory 中重新还原：
-
-```text
-Node Sequence
-Tool Sequence
-Fact IDs
-Evidence IDs
-Calculation IDs
-Final Status
-Stop Reason
-```
-
-因此最终答案可以追溯到：
-
-```text
-Answer
-  ↑
-Evidence / Calculation
-  ↑
-Tool
-  ↑
-Plan
-  ↑
-Query
-```
-
----
-
-## 17. Runtime Control Evaluation
-
-生成固定 50-case Runtime Control Dev Set：
-
-```powershell
-uv run python -m scripts.build_runtime_control_dev_v1
-```
-
-运行：
-
-```powershell
-uv run python -m scripts.evaluate_runtime_control_dev_v1
-```
-
-评测指标：
-
-- Intent Accuracy；
-- Argument Accuracy；
-- Plan Accuracy；
-- Tool Accuracy；
-- Tool Sequence Accuracy；
-- Termination Accuracy；
-- Task Success Rate；
-- Replay Success。
-
-数据集：
-
-```text
-data/evaluation/runtime/runtime_control_dev_v1.jsonl
-```
+- Argument；
+- Plan；
+- Tool Selection；
+- Tool Sequence；
+- Termination；
+- Replay。
 
 结果：
 
 ```text
-data/processed/evaluations/runtime/runtime_control_dev_v1/
-├── results.jsonl
-└── summary.json
+50 / 50 passed
 ```
 
-完整 Trajectory 为可重复生成的运行产物，不提交 Git。
+### Week 7 Safety Eval V1
+
+固定 40-case 安全评测：
+
+| Category | Count |
+|---|---:|
+| Evidence / Citation | 6 |
+| Numeric / Scope | 6 |
+| RBAC | 5 |
+| Prompt Injection | 6 |
+| Unsupported / Boundary | 5 |
+| Risk / HITL | 6 |
+| Normal Safe | 6 |
+| **Total** | **40** |
+
+结果：
+
+```text
+40 / 40 passed
+```
+
+Safety Eval 曾实际发现并修复：
+
+1. Permission Snapshot Tampering 被拦截后错误分类为 `internal_error`；
+2. Unsupported Write Operation 被错误路由到支持型 Runtime。
+
+完整说明：
+
+```text
+docs/week07/01_week7_acceptance.md
+docs/week07/02_responsible_ai_control_matrix.md
+```
 
 ---
 
-## 18. Current Evaluation Result
+## 6. Quick Start
 
-```text
-Cases:                    50
-Passed:                   50 / 50
+安装依赖：
 
-Intent Accuracy:          100.00%
-Argument Accuracy:        100.00%
-Plan Accuracy:            100.00%
-Tool Accuracy:            100.00%
-Tool Sequence Accuracy:   100.00%
-Termination Accuracy:     100.00%
-Task Success Rate:        100.00%
-Replay Success:           46 / 46
+```powershell
+uv sync
 ```
 
-其中：
-
-```text
-42 completed
-4 refused
-4 awaiting_human
-```
-
-4 个 `awaiting_human` Case 尚未进入最终终止状态，因此不要求最终 Trajectory。
-
----
-
-## 19. Testing
-
-运行完整工程回归：
+运行完整测试：
 
 ```powershell
 uv run pytest -q
 ```
 
-当前基线：
-
-```text
-841 passed
-```
-
-运行 Week 6 Acceptance：
+运行 Week 7 Safety Eval：
 
 ```powershell
-uv run python -m scripts.check_week6_acceptance
+uv run pytest tests/services/test_runtime_safety_eval.py -s -q -k "full_real"
 ```
 
 ---
 
-## 20. Evaluation Boundary
-
-Runtime Control Dev V1 主要验证：
+## 7. Project Structure
 
 ```text
-Query
-↓
-Parsing
-↓
-Intent
-↓
-Planning
-↓
-Tool Selection
-↓
-Tool Arguments
-↓
-Tool Sequence
-↓
-Termination
-↓
-Trajectory Replay
+app/
+├── schemas/          # Pydantic domain / runtime / trust schemas
+├── services/         # Runtime, tools, retrieval, trust & safety
+└── ...
+
+data/
+├── evaluation/
+└── processed/
+
+docs/
+├── week06/
+└── week07/
+
+tests/
+├── schemas/
+└── services/
 ```
-
-它并不等价于最终可信问答能力。
-
-以下指标仍需独立评测：
-
-- Retrieval Recall@k；
-- MRR；
-- NDCG；
-- Citation Accuracy；
-- Citation Completeness；
-- Faithfulness；
-- Answer Correctness；
-- Prompt Injection Robustness；
-- Permission Safety；
-- HITL Risk Policy；
-- End-to-End Task Success。
 
 ---
 
-## 21. Next Stage
+## 8. Current Boundary
 
-Week 7 将基于当前 Runtime 继续建设：
+当前项目已经具备完整的可信 Runtime 与安全控制基线，但仍有以下边界：
+
+- Prompt Injection Detector 主要基于 deterministic patterns；
+- Risk Classification 仍较粗粒度；
+- 尚未接入真实企业 IAM / SSO 权限系统；
+- Safety Eval V1 目前为固定 40-case；
+- 40/40 不等于对所有真实攻击绝对安全；
+- Retrieval、Citation Quality 与最终 Answer Quality 仍需继续扩大真实评测。
+
+后续能力建设应继续保持现有安全 Gate：
 
 ```text
-Evidence Verification
-+
-Numeric Verification
-+
-Citation Verification
-+
-Permission Policy
-+
+Trust Verification
+RBAC
 Prompt Injection Defense
-+
 Risk Policy
-+
-Human-in-the-loop
+HITL
+Generator Hard Gate
+Safety Regression
 ```
-
-Week 6 Runtime 将作为后续开发的固定工程基线。
