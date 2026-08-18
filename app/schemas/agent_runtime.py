@@ -67,6 +67,7 @@ StopReason = Literal[
     "missing_required_fields",
     "insufficient_evidence",
     "permission_denied",
+    "prompt_injection_detected",
     "tool_failure",
     "tool_timeout",
     "max_steps_exceeded",
@@ -1022,6 +1023,66 @@ class HumanReviewDecision(BaseModel):
         return value
 
 
+class PromptInjectionFinding(
+    BaseModel
+):
+    """一次可持久化、可审计的 Prompt Injection 命中记录。"""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        str_strip_whitespace=True,
+    )
+
+    chunk_id: str = Field(
+        min_length=1,
+        max_length=512,
+    )
+
+    document_id: str = Field(
+        min_length=1,
+        max_length=512,
+    )
+
+    severity: Literal[
+        "medium",
+        "high",
+        "critical",
+    ]
+
+    matched_rule_ids: tuple[
+        str,
+        ...
+    ] = Field(
+        min_length=1,
+    )
+
+    reason: str = Field(
+        min_length=1,
+        max_length=2000,
+    )
+
+    @field_validator(
+        "matched_rule_ids"
+    )
+    @classmethod
+    def validate_matched_rule_ids(
+        cls,
+        value: tuple[
+            str,
+            ...
+        ],
+    ) -> tuple[
+        str,
+        ...
+    ]:
+        return _validate_unique_values(
+            value,
+            field_name=(
+                "matched_rule_ids"
+            ),
+        )
+
 # 这部分是这份代码的关键：统一保存一次Agent运行中的所有信息
 class AgentState(BaseModel):
     """可保存、可恢复的严格 Agent 状态。"""
@@ -1146,6 +1207,11 @@ class AgentState(BaseModel):
     retrieved_documents: tuple[
         RetrievedDocument,
         ...,
+    ] = ()
+
+    prompt_injection_findings: tuple[
+        PromptInjectionFinding,
+        ...
     ] = ()
 
     resolved_fact_ids: tuple[
@@ -1735,6 +1801,11 @@ class AgentTrajectory(BaseModel):
     retrieved_documents: tuple[
         RetrievedDocument,
         ...,
+    ] = ()
+
+    prompt_injection_findings: tuple[
+        PromptInjectionFinding,
+        ...
     ] = ()
 
     resolved_fact_ids: tuple[

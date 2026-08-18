@@ -19,6 +19,7 @@ from app.schemas.agent_runtime import (
     AgentTrajectory,
     NodeSpan,
     ParsedFinancialQuery,
+    PromptInjectionFinding,
     RuntimePlan,
 )
 from app.schemas.trust import (
@@ -36,6 +37,7 @@ from app.services.runtime_completion import (
 from app.services.runtime_plan_executor import (
     RuntimePlanExecutor,
     RuntimePlanExecutorError,
+    RuntimePromptInjectionDetectedError,
 )
 from app.services.tool_registry import (
     ToolExecutionFailedError,
@@ -1477,6 +1479,50 @@ class AgentRuntime:
             )
         )
 
+        prompt_injection_findings = (
+            state.prompt_injection_findings
+        )
+
+        if isinstance(
+            error,
+            RuntimePromptInjectionDetectedError,
+        ):
+            detection_result = (
+                error.detection_result
+            )
+
+            finding = (
+                PromptInjectionFinding(
+                    chunk_id=(
+                        error.chunk_id
+                    ),
+                    document_id=(
+                        error.document_id
+                    ),
+                    severity=(
+                        detection_result
+                        .severity
+                    ),
+                    matched_rule_ids=(
+                        detection_result
+                        .matched_rule_ids
+                    ),
+                    reason=(
+                        detection_result
+                        .reason
+                    ),
+                )
+            )
+
+            if (
+                finding
+                not in
+                prompt_injection_findings
+            ):
+                prompt_injection_findings += (
+                    finding,
+                )
+
         calculation_traces = (
             state.calculation_traces
         )
@@ -1569,6 +1615,9 @@ class AgentRuntime:
             status=final_status,
             stop_reason=stop_reason,
             answer=None,
+            prompt_injection_findings=(
+                prompt_injection_findings
+            ),
             pending_human_review=False,
             human_review_reason=None,
             tool_call_traces=(
@@ -1636,6 +1685,30 @@ class AgentRuntime:
             return (
                 "internal_error",
                 "failed",
+            )
+
+        if isinstance(
+            error,
+            RuntimePromptInjectionDetectedError,
+        ):
+            # ========================================================
+            # Week7 Step5.3
+            #
+            # Prompt Injection 被安全机制主动拦截，
+            # 不属于 Runtime Crash。
+            #
+            # 因此：
+            #
+            # failed / internal_error
+            #     ❌
+            #
+            # refused / prompt_injection_detected
+            #     ✅
+            # ========================================================
+
+            return (
+                "prompt_injection_detected",
+                "refused",
             )
 
         if (
@@ -1898,6 +1971,9 @@ class AgentRuntime:
             retrieved_documents=(
                 state.retrieved_documents
             ),
+            prompt_injection_findings=(
+                state.prompt_injection_findings
+            ),  
             resolved_fact_ids=(
                 state.resolved_fact_ids
             ),
