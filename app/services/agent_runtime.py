@@ -17,6 +17,7 @@ from app.schemas.agent_runtime import (
     AgentIntent,
     AgentState,
     AgentTrajectory,
+    HumanReviewDecision,
     NodeSpan,
     ParsedFinancialQuery,
     PromptInjectionFinding,
@@ -62,6 +63,7 @@ from app.services.runtime_access_control import (
 )
 from app.services.runtime_policy import (
     RuntimeRiskPolicy,
+    reviewer_role_satisfies,
 )
 
 
@@ -477,6 +479,279 @@ class AgentRuntime:
         )
 
         state = record.state
+
+        return self._continue_from_state(
+            state
+        )
+
+    def submit_policy_review(
+        self,
+        *,
+        run_id: str,
+        thread_id: str,
+        approved: bool,
+        reviewer_id: str,
+        reviewer_role: UserRole,
+        reason: str,
+    ) -> AgentState:
+        """提交 Risk Policy 触发的人工审核决定并继续 Runtime。"""
+
+        if self.checkpoint_store is None:
+            raise AgentRuntimeError(
+                "Policy Review 需要配置 "
+                "checkpoint_store"
+            )
+
+        record = (
+            self.checkpoint_store
+            .load_latest(
+                run_id=run_id,
+                thread_id=thread_id,
+            )
+        )
+
+        state = record.state
+
+        # ========================================================
+        # Gate 1
+        #
+        # 只能审核真正暂停中的 Runtime。
+        # ========================================================
+
+        if (
+            state.status
+            != "awaiting_human"
+            or not state.pending_human_review
+        ):
+            raise AgentRuntimeError(
+                "当前 Runtime 不处于"
+                "人工审核状态"
+            )
+
+        # ========================================================
+        # Gate 2
+        #
+        # 这里只处理 Risk Policy 触发的 HITL，
+        # 不处理“缺字段澄清”。
+        # ========================================================
+
+        policy_decision = (
+            state.policy_decision
+        )
+
+        if (
+            policy_decision is None
+            or policy_decision.action
+            != "require_human"
+        ):
+            raise AgentRuntimeError(
+                "当前人工等待不是 "
+                "Risk Policy Review"
+            )
+
+        human_review = (
+            policy_decision.human_review
+        )
+
+        if human_review is None:
+            raise AgentRuntimeError(
+                "PolicyDecision 缺少 "
+                "HumanReviewRequest"
+            )
+
+        # ========================================================
+        # Gate 3
+        #
+        # HITL 不能绕过 Trust Verification。
+        # ========================================================
+
+        if (
+            state.verification_report
+            is None
+            or not state
+            .verification_report
+            .passed
+            or not policy_decision
+            .verification_passed
+        ):
+            raise AgentRuntimeError(
+                "可信校验未通过，"
+                "人工审核不能覆盖 Trust Gate"
+            )
+
+        # ========================================================
+        # Gate 4
+        #
+        # 人工审核本身也有授权边界。
+        # ========================================================
+
+        if not reviewer_role_satisfies(
+            reviewer_role=(
+                reviewer_role
+            ),
+            required_role=(
+                human_review
+                .required_reviewer_role
+            ),
+        ):
+            raise AgentRuntimeError(
+                "人工审核角色权限不足："
+                f"required="
+                f"{human_review.required_reviewer_role}; "
+                f"actual={reviewer_role}"
+            )
+
+        now = self.clock.now()
+
+        human_decision = (
+            HumanReviewDecision(
+                approved=approved,
+                corrected_query=None,
+                reason=reason,
+                reviewer_id=reviewer_id,
+                reviewer_role=(
+                    reviewer_role
+                ),
+                decided_at=now,
+            )
+        )
+
+        # ========================================================
+        # Audit Span
+        #
+        # 不保存敏感业务正文，
+        # 只保存 Review ID、权限和决定。
+        # ========================================================
+
+        span = (
+            self._build_completed_span(
+                node_name="await_human",
+                input_summary={
+                    "review_id": (
+                        human_review.review_id
+                    ),
+                    "required_reviewer_role": (
+                        human_review
+                        .required_reviewer_role
+                    ),
+                },
+                output_summary={
+                    "approved": approved,
+                    "reviewer_role": (
+                        reviewer_role
+                    ),
+                },
+                started_at=now,
+                completed_at=now,
+                timer_start=(
+                    perf_counter()
+                ),
+                checkpoint_revision=(
+                    state
+                    .checkpoint_revision
+                ),
+            )
+        )
+
+        # ========================================================
+        # REJECT
+        #
+        # 人工拒绝属于业务安全决策，
+        # 不是 Runtime Failure。
+        # ========================================================
+
+        if not approved:
+            state = self._replace_state(
+                state,
+                human_decision=(
+                    human_decision
+                ),
+                answer=None,
+                status="refused",
+                stop_reason=(
+                    "human_rejected"
+                ),
+                pending_human_review=False,
+                human_review_reason=None,
+                current_node=(
+                    "await_human"
+                ),
+                next_node="finish",
+                node_spans=(
+                    state.node_spans
+                    + (
+                        span,
+                    )
+                ),
+                step_count=(
+                    state.step_count
+                    + 1
+                ),
+                completed_at=now,
+                updated_at=now,
+            )
+
+            state = (
+                self._persist_checkpoint(
+                    state
+                )
+            )
+
+            return self._continue_from_state(
+                state
+            )
+
+        # ========================================================
+        # APPROVE
+        #
+        # 注意：
+        #
+        # 不重新执行 Tool
+        # 不重新做 Verification
+        # 不重新执行 Policy
+        #
+        # 因为等待人工时，这些步骤都已经完成。
+        #
+        # 直接：
+        #
+        # awaiting_human
+        #     ↓
+        # generate_answer
+        # ========================================================
+
+        state = self._replace_state(
+            state,
+            human_decision=(
+                human_decision
+            ),
+            status="verifying",
+            stop_reason=None,
+            pending_human_review=False,
+            human_review_reason=None,
+            current_node=(
+                "await_human"
+            ),
+            next_node=(
+                "generate_answer"
+            ),
+            node_spans=(
+                state.node_spans
+                + (
+                    span,
+                )
+            ),
+            step_count=(
+                state.step_count
+                + 1
+            ),
+            updated_at=now,
+        )
+
+        state = (
+            self._persist_checkpoint(
+                state
+            )
+        )
 
         return self._continue_from_state(
             state
@@ -2303,6 +2578,9 @@ class AgentRuntime:
             ),
             policy_decision=(
                 state.policy_decision
+            ),
+            human_decision=(
+                state.human_decision
             ),
             errors=state.errors,
             answer=state.answer,

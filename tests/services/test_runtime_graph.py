@@ -84,6 +84,9 @@ from app.services.runtime_answer_draft import (
 from app.services.runtime_trust_verifier import (
     RuntimeTrustVerifier,
 )
+from app.services.runtime_policy import (
+    RuntimeRiskPolicy,
+)
 
 class FixedClock:
     def now(
@@ -360,6 +363,15 @@ def _build_runtime(
             )
         ),
 
+        risk_policy=(
+            RuntimeRiskPolicy(
+                id_factory=(
+                    id_factory
+                )
+            )
+        ),
+
+
         answer_generator=(
             RuntimeAnswerGenerator(
                 registry_bundle=bundle,
@@ -478,7 +490,23 @@ def test_graph_runs_financial_fact_end_to_end(
         "verify_evidence",
         "prepare_answer",
         "verify_answer",
+        "evaluate_policy",
         "generate_answer",
+    )
+
+    assert (
+        state.risk_level
+        == "low"
+    )
+
+    assert (
+        state.policy_decision
+        is not None
+    )
+
+    assert (
+        state.policy_decision.action
+        == "allow"
     )
 
     assert (
@@ -734,6 +762,7 @@ def test_graph_interrupt_resumes_with_corrected_query(
         "verify_evidence",
         "prepare_answer",
         "verify_answer",
+        "evaluate_policy",
         "generate_answer",
     )
 

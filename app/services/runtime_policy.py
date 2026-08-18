@@ -14,6 +14,7 @@ from app.schemas.trust import (
     HumanReviewRequest,
     PolicyDecision,
     RiskLevel,
+    UserRole,
     VerificationReport,
 )
 
@@ -61,6 +62,24 @@ ReviewerRole = Literal[
     "reviewer",
     "admin",
 ]
+
+def reviewer_role_satisfies(
+    *,
+    reviewer_role: UserRole,
+    required_role: ReviewerRole,
+) -> bool:
+    """判断人工审核角色是否满足 Policy 要求。"""
+
+    if required_role == "admin":
+        return (
+            reviewer_role
+            == "admin"
+        )
+
+    return reviewer_role in {
+        "reviewer",
+        "admin",
+    }
 
 
 class RuntimeRiskPolicyError(

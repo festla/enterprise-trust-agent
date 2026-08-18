@@ -26,7 +26,9 @@ from app.schemas.enums import (
 from app.services.registry import (
     RegistryBundle,
 )
-
+from app.services.runtime_policy import (
+    reviewer_role_satisfies,
+)
 
 class RuntimeEvidenceError(
     ValueError
@@ -596,6 +598,161 @@ class RuntimeAnswerGenerator:
             )
 
         # ========================================================
+        # Gate 7：RiskLevel 必须存在
+        #
+        # Step6.3B：
+        # Trust Verification PASS 还不代表最终允许发布。
+        #
+        # Answer 必须经过 Risk Policy。
+        # ========================================================
+
+        if state.risk_level is None:
+            raise RuntimeAnswerGenerationError(
+                "generate_answer 缺少 "
+                "risk_level"
+            )
+
+        # ========================================================
+        # Gate 8：PolicyDecision 必须存在
+        #
+        # 防止：
+        #
+        # verify_answer
+        #     ↓
+        # 直接调用 Generator
+        #
+        # 绕过 evaluate_policy。
+        # ========================================================
+
+        policy_decision = (
+            state.policy_decision
+        )
+
+        if policy_decision is None:
+            raise RuntimeAnswerGenerationError(
+                "generate_answer 缺少 "
+                "policy_decision"
+            )
+
+        # ========================================================
+        # Gate 9：Policy 风险等级必须与 State 一致
+        #
+        # 防止调用方拿另一次/另一风险级别的
+        # PolicyDecision 来给当前 State 放行。
+        # ========================================================
+
+        if (
+            policy_decision.risk_level
+            != state.risk_level
+        ):
+            raise RuntimeAnswerGenerationError(
+                "PolicyDecision.risk_level "
+                "与 AgentState.risk_level 不一致"
+            )
+
+        # ========================================================
+        # Gate 10：Policy 必须建立在 Trust PASS 上
+        # ========================================================
+
+        if not (
+            policy_decision
+            .verification_passed
+        ):
+            raise RuntimeAnswerGenerationError(
+                "PolicyDecision 未通过 "
+                "Verification Hard Gate"
+            )
+
+        # ========================================================
+        # Gate 11：REFUSE
+        #
+        # Policy 已明确拒绝时，
+        # Generator 永远不能继续。
+        # ========================================================
+
+        if (
+            policy_decision.action
+            == "refuse"
+        ):
+            raise RuntimeAnswerGenerationError(
+                "Risk Policy 已拒绝发布答案"
+            )
+
+        # ========================================================
+        # Gate 12：REQUIRE HUMAN
+        #
+        # require_human
+        #      ↓
+        # HumanReviewDecision 必须存在
+        #      ↓
+        # 必须 approved=True
+        #      ↓
+        # Reviewer 权限必须满足 Policy
+        # ========================================================
+
+        if (
+            policy_decision.action
+            == "require_human"
+        ):
+            human_review = (
+                policy_decision
+                .human_review
+            )
+
+            if human_review is None:
+                raise RuntimeAnswerGenerationError(
+                    "require_human 缺少 "
+                    "HumanReviewRequest"
+                )
+
+            human_decision = (
+                state.human_decision
+            )
+
+            if human_decision is None:
+                raise RuntimeAnswerGenerationError(
+                    "高风险请求尚未完成人工审核"
+                )
+
+            if not human_decision.approved:
+                raise RuntimeAnswerGenerationError(
+                    "人工审核未批准答案发布"
+                )
+
+            if not reviewer_role_satisfies(
+                reviewer_role=(
+                    human_decision
+                    .reviewer_role
+                ),
+                required_role=(
+                    human_review
+                    .required_reviewer_role
+                ),
+            ):
+                raise RuntimeAnswerGenerationError(
+                    "人工审核角色不满足 "
+                    "Policy 要求"
+                )
+
+            reviewed_claim_ids = (
+                human_review.claim_ids
+            )
+
+            current_claim_ids = tuple(
+                claim.claim_id
+                for claim
+                in state.answer_draft.claims
+            )
+
+            if (
+                reviewed_claim_ids
+                != current_claim_ids
+            ):
+                raise RuntimeAnswerGenerationError(
+                    "人工审核 Claim "
+                    "与当前 AnswerDraft 不一致"
+                )
+        # ========================================================
         # 从这里开始才真正允许生成最终答案。
         # ========================================================
 
@@ -654,6 +811,24 @@ class RuntimeAnswerGenerator:
                     state
                     .verification_report
                     .passed
+                ),
+
+                "risk_level": (
+                    state.risk_level
+                ),
+                "policy_action": (
+                    policy_decision.action
+                ),
+                "human_approved": (
+                    (
+                        state.human_decision
+                        is not None
+                    )
+                    and (
+                        state
+                        .human_decision
+                        .approved
+                    )
                 ),
             },
             output_summary={

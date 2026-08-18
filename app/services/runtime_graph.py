@@ -458,6 +458,8 @@ def _apply_human_decision(
             "calculation_ids": (),
             "answer_draft": None,
             "verification_report": None,
+            "risk_level": None,
+            "policy_decision": None,   
             "answer": None,
             "citations": (),
             "status": "created",
@@ -800,6 +802,41 @@ def build_agent_runtime_graph(
             state
         )
 
+    def evaluate_policy_node(
+        graph_state: RuntimeGraphState,
+    ) -> RuntimeGraphState:
+        """执行 Answer Trust Verification 后的 Risk Policy。"""
+
+        state = _load_state(
+            graph_state
+        )
+
+        try:
+            state = (
+                runtime
+                ._run_policy_node(
+                    state
+                )
+            )
+
+            state = _persist_state(
+                runtime,
+                state,
+            )
+
+        except Exception as exc:
+            state = (
+                _handle_node_error(
+                    runtime=runtime,
+                    state=state,
+                    error=exc,
+                )
+            )
+
+        return _dump_state(
+            state
+        )
+
     def generate_answer_node(
         graph_state: RuntimeGraphState,
     ) -> RuntimeGraphState:
@@ -1029,6 +1066,26 @@ def build_agent_runtime_graph(
         ):
             return "finish"
 
+        return "evaluate_policy"
+
+    def after_policy(
+        graph_state: RuntimeGraphState,
+    ) -> str:
+        state = _load_state(
+            graph_state
+        )
+
+        if _is_terminal(
+            state
+        ):
+            return "finish"
+
+        if (
+            state.status
+            == "awaiting_human"
+        ):
+            return "await_human"
+
         return "generate_answer"
 
     def after_generate(
@@ -1081,6 +1138,11 @@ def build_agent_runtime_graph(
     builder.add_node(
         "verify_answer",
         verify_answer_node,
+    )
+
+    builder.add_node(
+        "evaluate_policy",
+        evaluate_policy_node,
     )
 
     builder.add_node(
@@ -1179,8 +1241,22 @@ def build_agent_runtime_graph(
         "verify_answer",
         after_verify_answer,
         {
+            "evaluate_policy": (
+                "evaluate_policy"
+            ),
+            "finish": "finish",
+        },
+    )
+
+    builder.add_conditional_edges(
+        "evaluate_policy",
+        after_policy,
+        {
             "generate_answer": (
                 "generate_answer"
+            ),
+            "await_human": (
+                "await_human"
             ),
             "finish": "finish",
         },

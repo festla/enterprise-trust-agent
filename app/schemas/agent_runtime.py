@@ -1008,6 +1008,11 @@ class HumanReviewDecision(BaseModel):
         max_length=256,
     )
 
+    reviewer_role: Literal[
+        "reviewer",
+        "admin",
+    ] = "reviewer"
+
     decided_at: datetime
 
     @field_validator("decided_at")
@@ -1854,6 +1859,10 @@ class AgentTrajectory(BaseModel):
 
     policy_decision: (
         PolicyDecision | None
+    ) = None
+
+    human_decision: (
+        HumanReviewDecision | None
     ) = None
 
     errors: tuple[

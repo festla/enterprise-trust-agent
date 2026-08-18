@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import pytest
 from datetime import (
     datetime,
     timezone,
@@ -21,6 +21,10 @@ from app.schemas.enums import (
     UnitCode,
     ValidationStatus,
 )
+from app.schemas.trust import (
+    HumanReviewRequest,
+    PolicyDecision,
+)
 from app.schemas.evidence import (
     SourceEvidence,
 )
@@ -38,6 +42,7 @@ from app.schemas.report import (
 )
 from app.services.agent_runtime import (
     AgentRuntime,
+    AgentRuntimeError
 )
 from app.services.calculation_tool import (
     register_execute_calculation_tool,
@@ -55,6 +60,7 @@ from app.services.registry import (
     RegistryBundle,
 )
 from app.services.runtime_completion import (
+    RuntimeAnswerGenerationError,
     RuntimeAnswerGenerator,
     RuntimeEvidenceVerifier,
 )
@@ -130,6 +136,64 @@ class SequentialIdFactory:
             f"{prefix}_{value}"
         )
 
+class RequireHumanRiskPolicy:
+    """测试专用：让 medium-risk 请求进入 HITL。"""
+
+    def __init__(
+        self,
+        *,
+        required_reviewer_role=(
+            "reviewer"
+        ),
+    ) -> None:
+        self.required_reviewer_role = (
+            required_reviewer_role
+        )
+
+    def evaluate(
+        self,
+        *,
+        risk_level,
+        verification_report,
+        claim_ids=(),
+    ):
+        if not verification_report.passed:
+            return PolicyDecision(
+                action="refuse",
+                risk_level=risk_level,
+                reason="测试可信校验失败",
+                verification_passed=False,
+                human_review=None,
+            )
+
+        return PolicyDecision(
+            action="require_human",
+            risk_level=risk_level,
+            reason=(
+                "测试请求需要人工审核"
+            ),
+            verification_passed=True,
+            human_review=(
+                HumanReviewRequest(
+                    review_id=(
+                        "review_policy_test"
+                    ),
+                    risk_level=(
+                        risk_level
+                    ),
+                    reason=(
+                        "测试高风险人工审核"
+                    ),
+                    claim_ids=(
+                        claim_ids
+                    ),
+                    required_reviewer_role=(
+                        self
+                        .required_reviewer_role
+                    ),
+                )
+            ),
+        )
 
 class FakeCalculationProvider:
     def calculate(
@@ -450,6 +514,7 @@ def _build_runtime(
     document_text: (
         str | None
     ) = None,
+    risk_policy_override=None,
 ):
     bundle = _build_bundle()
 
@@ -538,7 +603,10 @@ def _build_runtime(
     )
 
     risk_policy = (
-        RuntimeRiskPolicy(
+        risk_policy_override
+        if risk_policy_override
+        is not None
+        else RuntimeRiskPolicy(
             id_factory=(
                 id_factory
             )
@@ -1587,3 +1655,652 @@ def test_policy_decision_is_saved_to_trajectory(
         "evaluate_policy"
         in node_names
     )
+
+def test_policy_hitl_pauses_before_answer_generation(
+    tmp_path: Path,
+) -> None:
+    (
+        runtime,
+        _,
+        _,
+    ) = _build_runtime(
+        tmp_path,
+        risk_policy_override=(
+            RequireHumanRiskPolicy()
+        ),
+    )
+
+    state = runtime.run(
+        query=(
+            "美的集团2024年"
+            "主要经营风险有哪些？"
+        )
+    )
+
+    assert (
+        state.status
+        == "awaiting_human"
+    )
+
+    assert (
+        state.stop_reason
+        == "human_review_required"
+    )
+
+    assert (
+        state.pending_human_review
+        is True
+    )
+
+    assert (
+        state.policy_decision
+        is not None
+    )
+
+    assert (
+        state.policy_decision.action
+        == "require_human"
+    )
+
+    assert state.answer is None
+
+    node_names = tuple(
+        span.node_name
+        for span
+        in state.node_spans
+    )
+
+    assert (
+        "evaluate_policy"
+        in node_names
+    )
+
+    assert (
+        "generate_answer"
+        not in node_names
+    )
+
+
+def test_policy_hitl_approval_resumes_generation(
+    tmp_path: Path,
+) -> None:
+    (
+        runtime,
+        _,
+        trajectory_store,
+    ) = _build_runtime(
+        tmp_path,
+        risk_policy_override=(
+            RequireHumanRiskPolicy()
+        ),
+    )
+
+    waiting = runtime.run(
+        query=(
+            "美的集团2024年"
+            "主要经营风险有哪些？"
+        ),
+        run_id="run_hitl_approve",
+        thread_id=(
+            "thread_hitl_approve"
+        ),
+    )
+
+    assert (
+        waiting.status
+        == "awaiting_human"
+    )
+
+    completed = (
+        runtime.submit_policy_review(
+            run_id=(
+                "run_hitl_approve"
+            ),
+            thread_id=(
+                "thread_hitl_approve"
+            ),
+            approved=True,
+            reviewer_id=(
+                "reviewer_001"
+            ),
+            reviewer_role=(
+                "reviewer"
+            ),
+            reason=(
+                "证据与结论一致，批准发布"
+            ),
+        )
+    )
+
+    assert (
+        completed.status
+        == "completed"
+    )
+
+    assert (
+        completed.stop_reason
+        == "completed"
+    )
+
+    assert completed.answer is not None
+
+    assert (
+        completed.human_decision
+        is not None
+    )
+
+    assert (
+        completed
+        .human_decision
+        .approved
+        is True
+    )
+
+    assert (
+        completed
+        .human_decision
+        .reviewer_id
+        == "reviewer_001"
+    )
+
+    assert (
+        completed
+        .human_decision
+        .reviewer_role
+        == "reviewer"
+    )
+
+    node_names = tuple(
+        span.node_name
+        for span
+        in completed.node_spans
+    )
+
+    assert (
+        "await_human"
+        in node_names
+    )
+
+    assert (
+        node_names[-1]
+        == "generate_answer"
+    )
+
+    trajectory = (
+        trajectory_store.load(
+            completed.run_id
+        )
+    )
+
+    assert (
+        trajectory.human_decision
+        is not None
+    )
+
+    assert (
+        trajectory
+        .human_decision
+        .approved
+        is True
+    )
+
+def test_policy_hitl_rejection_is_controlled_refusal(
+    tmp_path: Path,
+) -> None:
+    (
+        runtime,
+        _,
+        trajectory_store,
+    ) = _build_runtime(
+        tmp_path,
+        risk_policy_override=(
+            RequireHumanRiskPolicy()
+        ),
+    )
+
+    waiting = runtime.run(
+        query=(
+            "美的集团2024年"
+            "主要经营风险有哪些？"
+        ),
+        run_id="run_hitl_reject",
+        thread_id=(
+            "thread_hitl_reject"
+        ),
+    )
+
+    assert (
+        waiting.status
+        == "awaiting_human"
+    )
+
+    refused = (
+        runtime.submit_policy_review(
+            run_id=(
+                "run_hitl_reject"
+            ),
+            thread_id=(
+                "thread_hitl_reject"
+            ),
+            approved=False,
+            reviewer_id=(
+                "reviewer_002"
+            ),
+            reviewer_role=(
+                "reviewer"
+            ),
+            reason=(
+                "结论风险较高，拒绝发布"
+            ),
+        )
+    )
+
+    assert (
+        refused.status
+        == "refused"
+    )
+
+    assert (
+        refused.stop_reason
+        == "human_rejected"
+    )
+
+    assert refused.answer is None
+
+    assert (
+        refused.human_decision
+        is not None
+    )
+
+    assert (
+        refused
+        .human_decision
+        .approved
+        is False
+    )
+
+    node_names = tuple(
+        span.node_name
+        for span
+        in refused.node_spans
+    )
+
+    assert (
+        "generate_answer"
+        not in node_names
+    )
+
+    trajectory = (
+        trajectory_store.load(
+            refused.run_id
+        )
+    )
+
+    assert (
+        trajectory.final_status
+        == "refused"
+    )
+
+    assert (
+        trajectory.stop_reason
+        == "human_rejected"
+    )
+
+    assert (
+        trajectory.human_decision
+        is not None
+    )
+
+def test_viewer_cannot_approve_policy_review(
+    tmp_path: Path,
+) -> None:
+    (
+        runtime,
+        checkpoint_store,
+        _,
+    ) = _build_runtime(
+        tmp_path,
+        risk_policy_override=(
+            RequireHumanRiskPolicy()
+        ),
+    )
+
+    waiting = runtime.run(
+        query=(
+            "美的集团2024年"
+            "主要经营风险有哪些？"
+        ),
+        run_id="run_hitl_viewer",
+        thread_id=(
+            "thread_hitl_viewer"
+        ),
+    )
+
+    assert (
+        waiting.status
+        == "awaiting_human"
+    )
+
+    with pytest.raises(
+        AgentRuntimeError,
+        match="人工审核角色权限不足",
+    ):
+        runtime.submit_policy_review(
+            run_id=(
+                "run_hitl_viewer"
+            ),
+            thread_id=(
+                "thread_hitl_viewer"
+            ),
+            approved=True,
+            reviewer_id=(
+                "viewer_001"
+            ),
+            reviewer_role="viewer",
+            reason="尝试越权批准",
+        )
+
+    record = (
+        checkpoint_store
+        .load_latest(
+            run_id=(
+                "run_hitl_viewer"
+            ),
+            thread_id=(
+                "thread_hitl_viewer"
+            ),
+        )
+    )
+
+    persisted = record.state
+
+    assert (
+        persisted.status
+        == "awaiting_human"
+    )
+
+    assert (
+        persisted.human_decision
+        is None
+    )
+
+def test_admin_required_review_rejects_reviewer(
+    tmp_path: Path,
+) -> None:
+    (
+        runtime,
+        _,
+        _,
+    ) = _build_runtime(
+        tmp_path,
+        risk_policy_override=(
+            RequireHumanRiskPolicy(
+                required_reviewer_role=(
+                    "admin"
+                )
+            )
+        ),
+    )
+
+    waiting = runtime.run(
+        query=(
+            "美的集团2024年"
+            "主要经营风险有哪些？"
+        ),
+        run_id=(
+            "run_hitl_admin_required"
+        ),
+        thread_id=(
+            "thread_hitl_admin_required"
+        ),
+    )
+
+    assert (
+        waiting.status
+        == "awaiting_human"
+    )
+
+    with pytest.raises(
+        AgentRuntimeError,
+        match="人工审核角色权限不足",
+    ):
+        runtime.submit_policy_review(
+            run_id=(
+                "run_hitl_admin_required"
+            ),
+            thread_id=(
+                "thread_hitl_admin_required"
+            ),
+            approved=True,
+            reviewer_id=(
+                "reviewer_003"
+            ),
+            reviewer_role=(
+                "reviewer"
+            ),
+            reason=(
+                "Reviewer 尝试审批 Admin 任务"
+            ),
+        )
+
+def test_generator_rejects_missing_policy_decision(
+    tmp_path: Path,
+) -> None:
+    (
+        runtime,
+        _,
+        _,
+    ) = _build_runtime(
+        tmp_path
+    )
+
+    completed = runtime.run(
+        query=(
+            "美的集团2024年"
+            "营业收入是多少？"
+        )
+    )
+
+    assert (
+        completed.status
+        == "completed"
+    )
+
+    assert (
+        runtime.answer_generator
+        is not None
+    )
+
+    bypass_state = (
+        completed.model_copy(
+            update={
+                "status": (
+                    "verifying"
+                ),
+                "stop_reason": None,
+                "answer": None,
+                "completed_at": None,
+                "policy_decision": None,
+                "current_node": (
+                    "evaluate_policy"
+                ),
+                "next_node": (
+                    "generate_answer"
+                ),
+            }
+        )
+    )
+
+    with pytest.raises(
+        RuntimeAnswerGenerationError,
+        match="policy_decision",
+    ):
+        (
+            runtime
+            .answer_generator
+            .generate(
+                bypass_state
+            )
+        )
+
+def test_generator_rejects_unapproved_human_review(
+    tmp_path: Path,
+) -> None:
+    (
+        runtime,
+        _,
+        _,
+    ) = _build_runtime(
+        tmp_path,
+        risk_policy_override=(
+            RequireHumanRiskPolicy()
+        ),
+    )
+
+    waiting = runtime.run(
+        query=(
+            "美的集团2024年"
+            "主要经营风险有哪些？"
+        )
+    )
+
+    assert (
+        waiting.status
+        == "awaiting_human"
+    )
+
+    assert (
+        runtime.answer_generator
+        is not None
+    )
+
+    # 模拟攻击者绕过 AgentRuntime，
+    # 强行把状态改成 Generator 可接受的 verifying。
+    bypass_state = (
+        waiting.model_copy(
+            update={
+                "status": (
+                    "verifying"
+                ),
+                "stop_reason": None,
+                "pending_human_review": (
+                    False
+                ),
+                "human_review_reason": (
+                    None
+                ),
+                "current_node": (
+                    "await_human"
+                ),
+                "next_node": (
+                    "generate_answer"
+                ),
+            }
+        )
+    )
+
+    with pytest.raises(
+        RuntimeAnswerGenerationError,
+        match="尚未完成人工审核",
+    ):
+        (
+            runtime
+            .answer_generator
+            .generate(
+                bypass_state
+            )
+        )
+
+def test_generator_rejects_human_rejection(
+    tmp_path: Path,
+) -> None:
+    (
+        runtime,
+        _,
+        _,
+    ) = _build_runtime(
+        tmp_path,
+        risk_policy_override=(
+            RequireHumanRiskPolicy()
+        ),
+    )
+
+    waiting = runtime.run(
+        query=(
+            "美的集团2024年"
+            "主要经营风险有哪些？"
+        ),
+        run_id=(
+            "run_gate_reject"
+        ),
+        thread_id=(
+            "thread_gate_reject"
+        ),
+    )
+
+    assert (
+        waiting.status
+        == "awaiting_human"
+    )
+
+    refused = (
+        runtime
+        .submit_policy_review(
+            run_id=(
+                "run_gate_reject"
+            ),
+            thread_id=(
+                "thread_gate_reject"
+            ),
+            approved=False,
+            reviewer_id=(
+                "reviewer_gate"
+            ),
+            reviewer_role=(
+                "reviewer"
+            ),
+            reason=(
+                "拒绝发布"
+            ),
+        )
+    )
+
+    assert (
+        refused.stop_reason
+        == "human_rejected"
+    )
+
+    assert (
+        runtime.answer_generator
+        is not None
+    )
+
+    bypass_state = (
+        refused.model_copy(
+            update={
+                "status": (
+                    "verifying"
+                ),
+                "stop_reason": None,
+                "completed_at": None,
+                "current_node": (
+                    "await_human"
+                ),
+                "next_node": (
+                    "generate_answer"
+                ),
+            }
+        )
+    )
+
+    with pytest.raises(
+        RuntimeAnswerGenerationError,
+        match="未批准",
+    ):
+        (
+            runtime
+            .answer_generator
+            .generate(
+                bypass_state
+            )
+        )
