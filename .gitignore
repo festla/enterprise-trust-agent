@@ -66,3 +66,7 @@ outputs/
 build/
 dist/
 *.egg-info/
+
+# Confidential competition data
+data/competition/private/
+data/competition/processed/
