@@ -6,6 +6,7 @@ import pymupdf
 from docx import Document
 from docx.table import Table
 from docx.text.paragraph import Paragraph
+from docx.oxml.ns import qn
 
 from app.schemas.competition import (
     CompetitionQuestion,
@@ -238,7 +239,131 @@ def _parse_pdf(
 # ============================================================
 # DOCX
 # ============================================================
+def _paragraph_style_name(
+    paragraph: Paragraph,
+) -> str | None:
+    """
+    保留 Word 原始 Paragraph Style。
 
+    Style 本身不是最终标题判断依据，
+    只是一个结构信号。
+    """
+
+    style = paragraph.style
+
+    if style is None:
+        return None
+
+    name = (
+        style.name
+        or style.style_id
+    )
+
+    if not name:
+        return None
+
+    return name.strip()
+
+
+def _read_outline_level_from_ppr(
+    ppr,
+) -> int | None:
+    """
+    从 OOXML paragraph properties 中读取：
+
+        <w:outlineLvl w:val="1"/>
+
+    """
+    if ppr is None:
+        return None
+
+    outline = ppr.find(
+        qn("w:outlineLvl")
+    )
+
+    if outline is None:
+        return None
+
+    value = outline.get(
+        qn("w:val")
+    )
+
+    if value is None:
+        return None
+
+    try:
+        return int(value)
+    except ValueError:
+        return None
+
+
+def _effective_outline_level(
+    paragraph: Paragraph,
+) -> int | None:
+    """
+    获取 Paragraph 的有效 Word 大纲层级。
+
+    优先级：
+
+        direct paragraph formatting
+                ↓
+        paragraph style
+                ↓
+        base style chain
+
+    这可以正确处理真实比赛文件中的：
+
+        Normal@level0
+        Normal@level1
+        Normal@level2
+    """
+
+    # ========================================================
+    # 1. Paragraph 自己设置的 outline level
+    # ========================================================
+
+    direct_level = (
+        _read_outline_level_from_ppr(
+            paragraph._p.pPr
+        )
+    )
+
+    if direct_level is not None:
+        return direct_level
+
+    # ========================================================
+    # 2. Style / Base Style
+    # ========================================================
+
+    style = paragraph.style
+
+    visited: set[str] = set()
+
+    while style is not None:
+        style_id = (
+            style.style_id
+            or str(id(style))
+        )
+
+        if style_id in visited:
+            break
+
+        visited.add(
+            style_id
+        )
+
+        style_level = (
+            _read_outline_level_from_ppr(
+                style._element.pPr
+            )
+        )
+
+        if style_level is not None:
+            return style_level
+
+        style = style.base_style
+
+    return None
 
 def _extract_table_rows(
     table: Table,
@@ -385,34 +510,45 @@ def _parse_docx(
                 blocks
             )
 
+            style_name = (
+                _paragraph_style_name(
+                    item
+                )
+            )
+
+            outline_level = (
+                _effective_outline_level(
+                    item
+                )
+            )
+
             blocks.append(
                 CompetitionTextBlock(
                     block_id=_build_block_id(
                         doc_id=(
-                            knowledge_source
-                            .doc_id
+                            knowledge_source.doc_id
                         ),
                         block_index=(
                             block_index
                         ),
                     ),
                     source_id=(
-                        knowledge_source
-                        .source_id
+                        knowledge_source.source_id
                     ),
                     doc_id=(
-                        knowledge_source
-                        .doc_id
+                        knowledge_source.doc_id
                     ),
                     source_type="word",
-                    block_index=(
-                        block_index
-                    ),
+                    block_index=block_index,
                     block_type="paragraph",
                     text=text,
                     paragraph_index=(
                         current_paragraph_index
                     ),
+
+                    # Word structure metadata
+                    style_name=style_name,
+                    outline_level=outline_level,
                 )
             )
 

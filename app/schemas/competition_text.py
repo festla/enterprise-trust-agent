@@ -95,6 +95,37 @@ class CompetitionTextBlock(
         ge=0,
     )
 
+    # ========================================================
+    # Word Paragraph Structure
+    #
+    # style_name:
+    #     Word Paragraph Style，例如：
+    #     Normal / Heading 1 / 修订1
+    #
+    # outline_level:
+    #     Word 实际大纲级别。
+    #
+    #     0 = 一级标题
+    #     1 = 二级标题
+    #     2 = 三级标题
+    #
+    # 注意：
+    #     outline_level 比 style_name 更可靠。
+    #     实际比赛 DOCX 中存在大量
+    #     Normal@level0 / Normal@level1 / Normal@level2。
+    # ========================================================
+
+    style_name: str | None = Field(
+        default=None,
+        min_length=1,
+    )
+
+    outline_level: int | None = Field(
+        default=None,
+        ge=0,
+        le=9,
+    )
+
     table_index: int | None = Field(
         default=None,
         ge=0,
@@ -143,14 +174,14 @@ class CompetitionTextBlock(
                 )
 
             if (
-                self.paragraph_index
-                is not None
-                or self.table_index
-                is not None
+                self.paragraph_index is not None
+                or self.table_index is not None
+                or self.style_name is not None
+                or self.outline_level is not None
             ):
                 raise ValueError(
                     "PDF page_text 不能包含 "
-                    "Word paragraph/table index"
+                    "Word paragraph/table/style 信息"
                 )
 
             if self.table_rows:
@@ -226,6 +257,15 @@ class CompetitionTextBlock(
                 raise ValueError(
                     "table 不能提供 "
                     "paragraph_index"
+                )
+
+            if (
+                self.style_name is not None
+                or self.outline_level is not None
+            ):
+                raise ValueError(
+                    "Word table 不能包含 "
+                    "paragraph style/outline 信息"
                 )
 
             if not self.table_rows:

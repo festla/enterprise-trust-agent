@@ -5,6 +5,8 @@ from pathlib import Path
 import pymupdf
 import pytest
 from docx import Document
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 
 from app.schemas.competition import (
     CompetitionQuestion,
@@ -167,16 +169,30 @@ def test_parse_docx_preserves_paragraph_table_order(
 
     document = Document()
 
-    document.add_paragraph(
-        "第一章 总则"
+    # ========================================================
+    # Heading 1
+    #
+    # python-docx 默认：
+    # style_name = Heading 1
+    # outline_level = 0
+    # ========================================================
+
+    document.add_heading(
+        "第一章 总则",
+        level=1,
     )
 
     # 故意加入空段落。
-    # Parser 应跳过，但 paragraph_index
-    # 仍应反映真实 Word 段落位置。
+    #
+    # Parser 会跳过空文本 Block，
+    # 但 paragraph_index 仍然应该递增。
     document.add_paragraph(
         ""
     )
+
+    # ========================================================
+    # Table
+    # ========================================================
 
     table = document.add_table(
         rows=2,
@@ -202,6 +218,10 @@ def test_parse_docx_preserves_paragraph_table_order(
         1,
         1,
     ).text = "不得低于规定标准"
+
+    # ========================================================
+    # 普通 Paragraph
+    # ========================================================
 
     document.add_paragraph(
         "第二条 商业银行应当"
@@ -230,6 +250,16 @@ def test_parse_docx_preserves_paragraph_table_order(
         )
     )
 
+    # ========================================================
+    # Block 顺序：
+    #
+    # 0 Heading Paragraph
+    # 1 Table
+    # 2 Normal Paragraph
+    #
+    # 空 Paragraph 不产生 Block。
+    # ========================================================
+
     assert [
         block.block_type
         for block
@@ -252,19 +282,53 @@ def test_parse_docx_preserves_paragraph_table_order(
         parsed.blocks[2]
     )
 
+    # ========================================================
+    # First Paragraph
+    # ========================================================
+
     assert (
         first_paragraph
         .paragraph_index
         == 0
     )
 
-    # 空段落占据 paragraph_index=1，
-    # 所以最后一个正文段落是 2。
+    assert (
+        first_paragraph.style_name
+        == "Heading 1"
+    )
+
+    assert (
+        first_paragraph.outline_level
+        == 0
+    )
+
+    # ========================================================
+    # Second Paragraph
+    #
+    # paragraph_index=1 是空段落，
+    # 虽然它没有生成 Block，
+    # 但仍然占据原始 Word paragraph index。
+    # ========================================================
+
     assert (
         second_paragraph
         .paragraph_index
         == 2
     )
+
+    assert (
+        second_paragraph.style_name
+        == "Normal"
+    )
+
+    assert (
+        second_paragraph.outline_level
+        is None
+    )
+
+    # ========================================================
+    # Table
+    # ========================================================
 
     assert (
         table_block.table_index
@@ -293,6 +357,17 @@ def test_parse_docx_preserves_paragraph_table_order(
     assert (
         "不得低于规定标准"
         in table_block.text
+    )
+
+    # Table 不应该携带 Paragraph Style。
+    assert (
+        table_block.style_name
+        is None
+    )
+
+    assert (
+        table_block.outline_level
+        is None
     )
 
 
@@ -337,3 +412,85 @@ def test_parser_rejects_legacy_doc(
             source=source,
             attachments_root=attachments,
         )
+
+def test_parse_docx_preserves_direct_outline_level(
+    tmp_path: Path,
+) -> None:
+    attachments = (
+        tmp_path
+        / "attachments"
+    )
+
+    attachments.mkdir()
+
+    docx_path = (
+        attachments
+        / "outline.docx"
+    )
+
+    document = Document()
+
+    paragraph = (
+        document.add_paragraph(
+            "信用风险"
+        )
+    )
+
+    # 保持 Normal Style，
+    # 但直接设置 Word outline level 1。
+    ppr = (
+        paragraph._p
+        .get_or_add_pPr()
+    )
+
+    outline = OxmlElement(
+        "w:outlineLvl"
+    )
+
+    outline.set(
+        qn("w:val"),
+        "1",
+    )
+
+    ppr.append(
+        outline
+    )
+
+    document.save(
+        docx_path
+    )
+
+    source = _source_record(
+        path=docx_path,
+        source_type="word",
+    )
+
+    question = _question(
+        source_type="word",
+        file_label="outline.docx",
+    )
+
+    parsed = (
+        parse_competition_text_document(
+            question=question,
+            source=source,
+            attachments_root=attachments,
+        )
+    )
+
+    block = parsed.blocks[0]
+
+    assert (
+        block.style_name
+        == "Normal"
+    )
+
+    assert (
+        block.outline_level
+        == 1
+    )
+
+    assert (
+        block.text
+        == "信用风险"
+    )
