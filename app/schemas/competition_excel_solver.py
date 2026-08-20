@@ -225,6 +225,10 @@ class CompetitionExcelCalculationResult(
 
     schema_version: Literal[1] = 1
 
+    sheet_name: str = Field(
+        min_length=1,
+    )
+
     operation: (
         CompetitionExcelCalculationOperation
     )

@@ -882,6 +882,7 @@ def _solve_sheet(
             entity_coordinate=(
                 entity.coordinate
             ),
+            sheet_name=sheet.name,
             start=(
                 CompetitionExcelCalculationOperand(
                     role="start",
