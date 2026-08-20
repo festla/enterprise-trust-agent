@@ -6,7 +6,7 @@ import json
 
 
 CHUNK_FILE = Path(
-    "data/processed/competition_chunks.jsonl"
+    "data/competition/processed/competition_text_chunks.jsonl"
 )
 
 

@@ -27,15 +27,32 @@ QA_FILE = Path(
 )
 
 
+SPLIT_FILE = Path(
+    "data/competition/processed/competition_eval_split_v1.json"
+)
+
+
 ATTACHMENTS_ROOT = Path(
     "data/competition/private/attachments"
 )
 
 
 OUTPUT_FILE = Path(
-    "data/competition/processed/competition_text_chunks.jsonl"
+    "data/competition/processed/competition_text_chunks_dev.jsonl"
 )
 
+def load_dev_case_ids():
+
+    with SPLIT_FILE.open(
+        "r",
+        encoding="utf-8",
+    ) as f:
+
+        split = json.load(f)
+
+    return set(
+        split["dev_case_ids"]
+    )
 
 def main():
 
@@ -53,6 +70,14 @@ def main():
         QA_FILE
     )
 
+    dev_case_ids = load_dev_case_ids()
+
+
+    cases = [
+        case
+        for case in cases
+        if case.case_id in dev_case_ids
+    ]
 
     # ======================================
     # 2. Build attachment manifest
@@ -170,7 +195,7 @@ def main():
                     total_chunks += 1
 
 
-            except Exception as exc:
+            except RuntimeError as exc:
 
                 failed_cases.append(
                     {
@@ -179,6 +204,11 @@ def main():
                     }
                 )
 
+
+    print(
+        "Processed cases:",
+        len(cases)
+    )
 
     print(
         "Total chunks:",
