@@ -6,11 +6,11 @@ import json
 
 
 CHUNK_FILE = Path(
-    "data/competition/processed/competition_text_chunks.jsonl"
+    "data/competition/processed/competition_text_chunks_dev.jsonl"
 )
 
 
-MAX_REASONABLE_CHARS = 1200
+MAX_REASONABLE_CHARS = 900
 
 
 def load_chunks():

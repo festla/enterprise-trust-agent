@@ -5,6 +5,7 @@ from pathlib import Path
 
 
 from app.services.competition_dataset import (
+    build_competition_question,
     load_competition_qa_excel,
 )
 
@@ -54,29 +55,35 @@ def load_dev_case_ids():
         split["dev_case_ids"]
     )
 
-def main():
-
+def main() -> None:
     OUTPUT_FILE.parent.mkdir(
         parents=True,
         exist_ok=True,
     )
 
-
     # ======================================
-    # 1. Load QA cases
+    # 1. Load Dev QA cases
     # ======================================
 
-    cases = load_competition_qa_excel(
+    all_cases = load_competition_qa_excel(
         QA_FILE
     )
 
     dev_case_ids = load_dev_case_ids()
 
-
-    cases = [
+    dev_cases = [
         case
-        for case in cases
+        for case in all_cases
         if case.case_id in dev_case_ids
+    ]
+
+    text_cases = [
+        case
+        for case in dev_cases
+        if case.source_type in {
+            "pdf",
+            "word",
+        }
     ]
 
     # ======================================
@@ -89,76 +96,88 @@ def main():
         )
     )
 
+    manifest_by_source_id = {
+        source.source_id: source
+        for source in manifest
+    }
 
     resolver = CompetitionSourceResolver(
         manifest
     )
 
+    # ======================================
+    # 3. Resolve and deduplicate sources
+    #
+    # 同一份文档可能对应多个 QA，
+    # 但这里只保留一个代表 case。
+    # ======================================
+
+    unique_sources = {}
+
+    resolution_failures = []
+
+    for case in sorted(
+        text_cases,
+        key=lambda item: item.case_id,
+    ):
+        try:
+            resolution = resolver.resolve(
+                case
+            )
+
+            source = manifest_by_source_id.get(
+                resolution.source_id
+            )
+
+            if source is None:
+                raise RuntimeError(
+                    "Manifest 中找不到已解析的数据源: "
+                    f"{resolution.source_id}"
+                )
+
+            unique_sources.setdefault(
+                source.source_id,
+                (case, source),
+            )
+
+        except RuntimeError as exc:
+            resolution_failures.append(
+                {
+                    "case_id": case.case_id,
+                    "error": str(exc),
+                }
+            )
+
+    # ======================================
+    # 4. Parse and chunk unique sources
+    # ======================================
 
     total_chunks = 0
-    failed_cases = []
+    processed_sources = 0
 
+    failed_sources = []
+
+    seen_doc_ids = set()
+    seen_chunk_ids = set()
 
     with OUTPUT_FILE.open(
         "w",
         encoding="utf-8",
     ) as writer:
-
-
-        for case in cases:
-
-
-            # 只处理 PDF / Word
-            if case.source_type not in {
-                "pdf",
-                "word",
-            }:
-                continue
-
+        for (
+            source_id,
+            representative,
+        ) in sorted(
+            unique_sources.items()
+        ):
+            case, source = representative
 
             try:
-
-                # --------------------------
-                # Question
-                # --------------------------
-
-                from app.services.competition_dataset import (
-                    build_competition_question,
-                )
-
                 question = (
                     build_competition_question(
                         case
                     )
                 )
-
-
-                # --------------------------
-                # Resolve source
-                # --------------------------
-
-                resolution = (
-                    resolver.resolve(
-                        case
-                    )
-                )
-
-
-                source = next(
-                    item
-                    for item
-                    in manifest
-                    if (
-                        item.source_id
-                        ==
-                        resolution.source_id
-                    )
-                )
-
-
-                # --------------------------
-                # Parse document
-                # --------------------------
 
                 document = (
                     parse_competition_text_document(
@@ -170,10 +189,26 @@ def main():
                     )
                 )
 
+                if (
+                    document.source.source_id
+                    != source_id
+                ):
+                    raise RuntimeError(
+                        "Parsed document source_id "
+                        "与 Manifest 不一致: "
+                        f"expected={source_id}; "
+                        "actual="
+                        f"{document.source.source_id}"
+                    )
 
-                # --------------------------
-                # Chunk
-                # --------------------------
+                if (
+                    document.source.doc_id
+                    in seen_doc_ids
+                ):
+                    raise RuntimeError(
+                        "检测到重复 doc_id: "
+                        f"{document.source.doc_id}"
+                    )
 
                 chunks = (
                     build_competition_text_chunks(
@@ -181,9 +216,47 @@ def main():
                     )
                 )
 
+                if not chunks:
+                    raise RuntimeError(
+                        "文档没有生成任何 Chunk: "
+                        f"{document.source.doc_id}"
+                    )
 
+                current_chunk_ids = {
+                    chunk.chunk_id
+                    for chunk in chunks
+                }
+
+                if (
+                    len(current_chunk_ids)
+                    != len(chunks)
+                ):
+                    raise RuntimeError(
+                        "同一文档内部存在重复 "
+                        "chunk_id: "
+                        f"{document.source.doc_id}"
+                    )
+
+                duplicated_chunk_ids = (
+                    seen_chunk_ids.intersection(
+                        current_chunk_ids
+                    )
+                )
+
+                if duplicated_chunk_ids:
+                    duplicate_example = min(
+                        duplicated_chunk_ids
+                    )
+
+                    raise RuntimeError(
+                        "不同文档之间存在重复 "
+                        "chunk_id: "
+                        f"{duplicate_example}"
+                    )
+
+                # 全部检查通过后再写入，
+                # 避免失败文档只写入一部分 Chunk。
                 for chunk in chunks:
-
                     writer.write(
                         json.dumps(
                             chunk.model_dump(),
@@ -192,41 +265,91 @@ def main():
                         + "\n"
                     )
 
-                    total_chunks += 1
+                seen_doc_ids.add(
+                    document.source.doc_id
+                )
 
+                seen_chunk_ids.update(
+                    current_chunk_ids
+                )
 
-            except RuntimeError as exc:
+                total_chunks += len(
+                    chunks
+                )
 
-                failed_cases.append(
+                processed_sources += 1
+
+            except (
+                RuntimeError,
+                ValueError,
+            ) as exc:
+                failed_sources.append(
                     {
+                        "source_id": source_id,
                         "case_id": case.case_id,
+                        "filename": (
+                            source.actual_filename
+                        ),
                         "error": str(exc),
                     }
                 )
 
+    # ======================================
+    # 5. Report
+    # ======================================
 
     print(
-        "Processed cases:",
-        len(cases)
+        "Dev QA cases:",
+        len(dev_cases),
+    )
+
+    print(
+        "Dev text QA cases:",
+        len(text_cases),
+    )
+
+    print(
+        "Unique text sources:",
+        len(unique_sources),
+    )
+
+    print(
+        "Processed sources:",
+        processed_sources,
+    )
+
+    print(
+        "Unique doc IDs:",
+        len(seen_doc_ids),
     )
 
     print(
         "Total chunks:",
-        total_chunks
+        total_chunks,
     )
-
 
     print(
-        "Failed cases:",
-        len(failed_cases)
+        "Resolution failures:",
+        len(resolution_failures),
     )
 
+    print(
+        "Failed sources:",
+        len(failed_sources),
+    )
 
-    for item in failed_cases[:10]:
+    for item in resolution_failures[:10]:
+        print(item)
 
-        print(
-            item
-        )
+    for item in failed_sources[:10]:
+        print(item)
+
+    # Dev 语料不应该静默生成不完整结果。
+    if (
+        resolution_failures
+        or failed_sources
+    ):
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
