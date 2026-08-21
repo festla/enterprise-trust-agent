@@ -5,7 +5,7 @@ from typing import (
     Literal,
     Self,
 )
-from dataclasses import dataclass
+
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -435,106 +435,6 @@ class CompetitionTextChunk(
                 )
 
         return self
-
-from typing import Literal
-
-
-@dataclass(
-    frozen=True,
-    slots=True,
-)
-class CompetitionTableChunk:
-    """
-    Competition 表格 Chunk。
-
-    表格证据必须保留：
-
-    1. 原始来源
-    2. 表格位置
-    3. 结构上下文
-    4. 可检索文本
-
-    不直接把 table 转字符串丢给模型。
-    """
-
-    chunk_id: str
-
-    source_id: str
-
-    doc_id: str
-
-    source_type: Literal[
-        "word",
-        "pdf",
-    ]
-
-    chunk_index: int
-
-    chunk_type: Literal[
-        "table",
-    ]
-
-    # =====================
-    # 原始来源
-    # =====================
-
-    block_id: str
-
-    block_index: int
-
-    table_index: int
-
-
-    # =====================
-    # Table Context
-    # =====================
-
-    section_path: tuple[str, ...]
-
-    article: str | None
-
-    item_path: tuple[str, ...]
-
-
-    # =====================
-    # Table Metadata
-    # =====================
-
-    title: str | None
-
-    unit: str | None
-
-    frequency: str | None
-
-    purpose: str | None
-
-    content: str | None
-
-    scope: str | None
-
-    format: str | None
-
-
-    # =====================
-    # Table Content
-    # =====================
-
-    markdown_table: str
-
-    text: str
-
-    char_count: int
-
-    text_sha256: str
-
-
-    # =====================
-    # Table Size
-    # =====================
-
-    rows: int
-
-    cols: int
 
 
 class CompetitionChunkDocument(

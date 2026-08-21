@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.schemas.competition_chunk import (
-    CompetitionTableChunk,
-)
+
 from app.schemas.competition_text import (
     CompetitionTextBlock,
 )

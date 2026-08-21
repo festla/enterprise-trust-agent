@@ -9,7 +9,6 @@ from app.schemas.competition_chunk import (
     CompetitionChunkDocument,
     CompetitionChunkSourceSpan,
     CompetitionTextChunk,
-    CompetitionTableChunk
 )
 from app.schemas.competition_evidence import (
     CompetitionKnowledgeSource,
@@ -324,69 +323,3 @@ def test_chunk_document_rejects_source_mismatch(
                 chunk,
             ),
         )
-
-def test_competition_table_chunk_schema():
-
-    chunk = CompetitionTableChunk(
-        chunk_id="chunk:test:00001",
-        source_id="src:test",
-        doc_id="doc:test",
-        source_type="word",
-        chunk_index=0,
-        chunk_type="table",
-
-        block_id="block:test",
-        block_index=1,
-        table_index=0,
-
-        section_path=(
-            "资本管理",
-        ),
-
-        article=None,
-
-        item_path=(
-            "资本充足率",
-        ),
-
-        title="资本充足率表",
-
-        unit="百分比",
-
-        frequency="季度",
-
-        purpose="披露资本指标",
-
-        content="资本充足率",
-
-        scope="集团",
-
-        format="表格",
-
-        markdown_table=(
-            "|指标|数值|\n"
-            "|---|---|\n"
-            "|资本充足率|10|"
-        ),
-
-        text="资本充足率表",
-
-        char_count=6,
-
-        text_sha256="a"*64,
-
-        rows=2,
-
-        cols=2,
-    )
-
-
-    assert chunk.chunk_type == "table"
-
-    assert chunk.rows == 2
-
-    assert (
-        chunk.section_path
-        ==
-        ("资本管理",)
-    )
