@@ -232,6 +232,13 @@ def test_word_table_chunk_preserves_rows(
         table_row_start=0,
         table_row_end=1,
         table_rows=rows,
+        table_title="资本充足率监管要求",
+        table_unit="单位：百分比",
+        table_frequency="季度",
+        table_purpose="披露资本充足率",
+        table_content="资本监管指标",
+        table_scope="集团口径",
+        table_format="table",
     )
 
     assert (
@@ -247,6 +254,21 @@ def test_word_table_chunk_preserves_rows(
     assert (
         chunk.article_inherited
         is True
+    )
+
+    assert (
+        chunk.table_title
+        == "资本充足率监管要求"
+    )
+
+    assert (
+        chunk.table_unit
+        == "单位：百分比"
+    )
+
+    assert (
+        chunk.table_format
+        == "table"
     )
 
 
@@ -322,4 +344,59 @@ def test_chunk_document_rejects_source_mismatch(
             chunks=(
                 chunk,
             ),
+        )
+
+
+def test_word_table_chunk_rejects_inconsistent_row_range(
+) -> None:
+    source = _word_source()
+
+    rows = (
+        (
+            "指标",
+            "监管要求",
+        ),
+        (
+            "资本充足率",
+            "不得低于规定标准",
+        ),
+    )
+
+    text = (
+        "指标\t监管要求\n"
+        "资本充足率\t不得低于规定标准"
+    )
+
+    with pytest.raises(
+        ValidationError
+    ):
+        CompetitionTextChunk(
+            chunk_id="chunk:test:00000",
+            source_id=source.source_id,
+            doc_id=source.doc_id,
+            source_type="word",
+            chunk_index=0,
+            chunk_type="table",
+            source_spans=(
+                CompetitionChunkSourceSpan(
+                    block_id=(
+                        "block:test:00020"
+                    ),
+                    block_index=20,
+                    start_char=0,
+                    end_char=len(text),
+                ),
+            ),
+            text=text,
+            char_count=len(text),
+            text_sha256=_sha(text),
+            table_index=0,
+
+            # 实际只有两行，
+            # 但这里错误声明为 0 到 3。
+            table_row_start=0,
+            table_row_end=3,
+
+            table_rows=rows,
+            table_format="table",
         )

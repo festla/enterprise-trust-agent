@@ -249,6 +249,45 @@ class CompetitionTextChunk(
         ...
     ] = ()
 
+    # ========================================================
+    # Word Table Context
+    # ========================================================
+
+    table_title: str | None = Field(
+        default=None,
+        min_length=1,
+    )
+
+    table_unit: str | None = Field(
+        default=None,
+        min_length=1,
+    )
+
+    table_frequency: str | None = Field(
+        default=None,
+        min_length=1,
+    )
+
+    table_purpose: str | None = Field(
+        default=None,
+        min_length=1,
+    )
+
+    table_content: str | None = Field(
+        default=None,
+        min_length=1,
+    )
+
+    table_scope: str | None = Field(
+        default=None,
+        min_length=1,
+    )
+
+    table_format: str | None = Field(
+        default=None,
+        min_length=1,
+    )
+
     @model_validator(
         mode="after"
     )
@@ -367,6 +406,25 @@ class CompetitionTextChunk(
                     "table_rows"
                 )
 
+            table_metadata = (
+                self.table_title,
+                self.table_unit,
+                self.table_frequency,
+                self.table_purpose,
+                self.table_content,
+                self.table_scope,
+                self.table_format,
+            )
+
+            if any(
+                value is not None
+                for value in table_metadata
+            ):
+                raise ValueError(
+                    "text Chunk 不能包含 "
+                    "table metadata"
+                )
+
             if (
                 self.table_index is not None
                 or self.table_row_start
@@ -419,6 +477,39 @@ class CompetitionTextChunk(
                 raise ValueError(
                     "table_row_end 不能小于 "
                     "table_row_start"
+                )
+
+            expected_row_count = (
+                self.table_row_end
+                - self.table_row_start
+                + 1
+            )
+
+            if (
+                expected_row_count
+                != len(self.table_rows)
+            ):
+                raise ValueError(
+                    "table_rows 数量必须与 "
+                    "table_row_start/"
+                    "table_row_end 一致"
+                )
+
+            if (
+                self.paragraph_start_index
+                is not None
+                or self.paragraph_end_index
+                is not None
+            ):
+                raise ValueError(
+                    "table Chunk 不能包含 "
+                    "paragraph 位置信息"
+                )
+
+            if self.table_format is None:
+                raise ValueError(
+                    "table Chunk 必须提供 "
+                    "table_format"
                 )
 
             # 一个 Table Chunk 当前只能来源
