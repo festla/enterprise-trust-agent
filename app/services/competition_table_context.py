@@ -58,6 +58,52 @@ def _normalize_metadata_text(
         text.split()
     ).strip()
 
+_EXPLICIT_TABLE_TITLE_PATTERN = re.compile(
+    r"^(?:[（(]"
+    r"[一二三四五六七八九十百零〇0-9]+"
+    r"[）)]\s*)?"
+    r"表(?:格)?\s*"
+    r"[A-Za-z0-9一二三四五六七八九十]+"
+    r"(?:[-./]"
+    r"[A-Za-z0-9一二三四五六七八九十]+)*"
+    r"\s*[：:]\s*"
+    r"\S.+$"
+)
+
+
+def extract_explicit_table_title(
+    text: str,
+) -> str | None:
+    """
+    识别具有明确结构的表格标题，例如：
+
+        （一）表格KM1：监管并表关键审慎监管指标
+        （二）表格 CR1：资产质量
+        表CR3：资本充足率
+
+    普通正文、概览标题和表内字段不会被识别为表格标题。
+    """
+
+    normalized = (
+        _normalize_metadata_text(
+            text
+        )
+    )
+
+    if (
+        not normalized
+        or len(normalized) > 200
+    ):
+        return None
+
+    if (
+        _EXPLICIT_TABLE_TITLE_PATTERN
+        .fullmatch(normalized)
+        is None
+    ):
+        return None
+
+    return normalized
 
 def _collect_metadata_candidates(
     *,
@@ -227,48 +273,43 @@ def _canonicalize_format(
     return value
 
 
-def _extract_short_table_title(
+def _resolve_table_title(
     *,
     table_block: CompetitionTextBlock,
-    nearby_text: tuple[str, ...],
+    title_hint: str | None,
 ) -> str | None:
     """
-    暂时保留V1的独立短标题能力。
+    标题来源优先级：
 
-    跨主表标题继承将在4C3实现。
+    1. 表格自身就是一个独立标题；
+    2. 文档遍历过程中继承的最近明确表格标题。
+
+    不从表格后方的 nearby_text 获取标题，
+    避免错误绑定到下一张表的标题。
     """
 
-    candidates = (
-        table_block.text,
-    ) + nearby_text
-
-    for candidate in candidates:
-        # 整张表格正文不能作为标题。
-        if (
-            "\n" in candidate
-            or "\r" in candidate
-        ):
-            continue
-
-        normalized = (
-            _normalize_metadata_text(
-                candidate
-            )
+    direct_title = (
+        extract_explicit_table_title(
+            table_block.text
         )
+    )
 
-        if (
-            normalized.startswith("表")
-            and len(normalized) < 80
-        ):
-            return normalized
+    if direct_title is not None:
+        return direct_title
 
-    return None
+    if title_hint is None:
+        return None
+
+    return extract_explicit_table_title(
+        title_hint
+    )
 
 def build_table_context(
     *,
     table_block: CompetitionTextBlock,
     context: CompetitionRegulatoryContext,
     nearby_text: tuple[str, ...] = (),
+    title_hint: str | None = None,
 ) -> CompetitionTableContext:
     """
     从明确的表格标签和法规上下文构造Table Context。
@@ -391,9 +432,9 @@ def build_table_context(
         article=context.article,
         item_path=context.item_path,
         title=(
-            _extract_short_table_title(
+            _resolve_table_title(
                 table_block=table_block,
-                nearby_text=nearby_text,
+                title_hint=title_hint,
             )
         ),
         unit=unit,

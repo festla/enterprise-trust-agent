@@ -80,6 +80,35 @@ def _word_block(
         ),
     )
 
+def _word_table_block(
+    *,
+    source: CompetitionKnowledgeSource,
+    block_index: int,
+    table_index: int,
+    rows: tuple[
+        tuple[str, ...],
+        ...,
+    ],
+) -> CompetitionTextBlock:
+    text = "\n".join(
+        "\t".join(row)
+        for row in rows
+    )
+
+    return CompetitionTextBlock(
+        block_id=(
+            f"block:{source.doc_id}:"
+            f"{block_index:05d}"
+        ),
+        source_id=source.source_id,
+        doc_id=source.doc_id,
+        source_type="word",
+        block_index=block_index,
+        block_type="table",
+        text=text,
+        table_index=table_index,
+        table_rows=rows,
+    )
 
 def test_word_chunks_inherit_outline_and_numbered_context(
 ) -> None:
@@ -727,3 +756,127 @@ def test_table_inherits_regulatory_context_and_nearby_metadata(
             for chunk in chunks
         }
     ) == len(chunks)
+
+def test_instruction_table_inherits_main_table_title(
+) -> None:
+    source = _word_source()
+
+    first_title = (
+        "（一）表格KM1："
+        "监管并表关键审慎监管指标"
+    )
+
+    second_title = (
+        "（二）表格OVA："
+        "风险管理定性信息"
+    )
+
+    document = CompetitionTextDocument(
+        source=source,
+        blocks=(
+            _word_block(
+                source=source,
+                block_index=0,
+                paragraph_index=0,
+                text="二、披露表格",
+            ),
+            _word_block(
+                source=source,
+                block_index=1,
+                paragraph_index=1,
+                text=first_title,
+            ),
+            _word_table_block(
+                source=source,
+                block_index=2,
+                table_index=0,
+                rows=(
+                    (
+                        "目的：披露关键审慎监管指标。",
+                        "",
+                    ),
+                    (
+                        "指标",
+                        "数值",
+                    ),
+                ),
+            ),
+            _word_block(
+                source=source,
+                block_index=3,
+                paragraph_index=2,
+                text="填写说明",
+                outline_level=1,
+            ),
+            _word_block(
+                source=source,
+                block_index=4,
+                paragraph_index=3,
+                text="1.定义",
+            ),
+            _word_table_block(
+                source=source,
+                block_index=5,
+                table_index=1,
+                rows=(
+                    (
+                        "行号",
+                        "说明",
+                    ),
+                    (
+                        "1行",
+                        "监管指标说明。",
+                    ),
+                ),
+            ),
+            _word_block(
+                source=source,
+                block_index=6,
+                paragraph_index=4,
+                text=second_title,
+            ),
+            _word_table_block(
+                source=source,
+                block_index=7,
+                table_index=2,
+                rows=(
+                    (
+                        "目的：披露风险管理定性信息。",
+                        "",
+                    ),
+                    (
+                        "项目",
+                        "内容",
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    chunks = build_competition_text_chunks(
+        document,
+        max_chars=500,
+    )
+
+    table_chunks = [
+        chunk
+        for chunk in chunks
+        if chunk.chunk_type == "table"
+    ]
+
+    assert [
+        chunk.table_title
+        for chunk in table_chunks
+    ] == [
+        first_title,
+        first_title,
+        second_title,
+    ]
+
+    # “填写说明”清除了法规 item_path，
+    # 但不应清除表格标题继承关系。
+    assert (
+        table_chunks[1].item_path
+        ==
+        ("1.定义",)
+    )

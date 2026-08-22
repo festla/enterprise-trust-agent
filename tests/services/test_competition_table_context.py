@@ -4,6 +4,7 @@ from app.schemas.competition_text import (
 
 from app.services.competition_table_context import (
     build_table_context,
+    extract_explicit_table_title,
 )
 
 from app.services.competition_regulatory_context import (
@@ -321,3 +322,36 @@ def test_extracts_metadata_from_nearby_labeled_paragraphs(
     assert result.unit == "单位：百分比"
     assert result.frequency == "季度"
     assert result.purpose is None
+
+
+def test_extracts_only_explicit_table_titles(
+) -> None:
+    assert (
+        extract_explicit_table_title(
+            "（一）表格KM1：监管并表关键审慎监管指标"
+        )
+        ==
+        "（一）表格KM1：监管并表关键审慎监管指标"
+    )
+
+    assert (
+        extract_explicit_table_title(
+            "表CR3：资本充足率"
+        )
+        ==
+        "表CR3：资本充足率"
+    )
+
+    assert (
+        extract_explicit_table_title(
+            "六、国内系统重要性银行披露概览"
+        )
+        is None
+    )
+
+    assert (
+        extract_explicit_table_title(
+            "本段正文提到了表格KM1：但不是标题"
+        )
+        is None
+    )

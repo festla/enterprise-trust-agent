@@ -22,6 +22,7 @@ from app.services.competition_table_chunker import (
 )
 from app.services.competition_table_context import (
     build_table_context,
+    extract_explicit_table_title,
 )
 
 
@@ -878,6 +879,13 @@ def build_competition_text_chunks(
         CompetitionRegulatoryContextTracker()
     )
 
+    # 最近出现的明确表格标题。
+    #
+    # 该状态独立于 Regulatory Context，
+    # 因为“填写说明”等 Word 标题可能会清空 item_path，
+    # 但后续定义表仍属于上一张主表。
+    active_table_title: str | None = None
+
     buffer = _ChunkBuffer()
 
     chunks: list[
@@ -918,6 +926,24 @@ def build_competition_text_chunks(
 
         if (
             block.block_type
+            == "paragraph"
+        ):
+            explicit_table_title = (
+                extract_explicit_table_title(
+                    block.text
+                )
+            )
+
+            if (
+                explicit_table_title
+                is not None
+            ):
+                active_table_title = (
+                    explicit_table_title
+                )
+
+        if (
+            block.block_type
             == "table"
         ):
             # 表格是明确边界：
@@ -942,6 +968,9 @@ def build_competition_text_chunks(
                     nearby_text=(
                         nearby_text
                     ),
+                    title_hint=(
+                        active_table_title
+                    ),
                 )
             )
 
@@ -955,6 +984,15 @@ def build_competition_text_chunks(
                     max_chars=max_chars,
                 )
             )
+            # 如果表格自身包含更明确的标题，
+            # 后续附属表应继承该标题。
+            if (
+                table_context.title
+                is not None
+            ):
+                active_table_title = (
+                    table_context.title
+                )
 
             chunks.extend(
                 table_chunks
