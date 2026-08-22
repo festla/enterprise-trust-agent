@@ -372,35 +372,61 @@ def _extract_table_rows(
     ...,
 ]:
     """
-    保留 DOCX 表格二维结构。
+    保留DOCX表格的二维网格结构。
 
-    Cell 文本可以为空，
-    但每一行仍然保留其列结构。
+    Word合并单元格会被python-docx重复映射到
+    row.cells中的多个网格位置。
+
+    处理规则：
+
+    1. 合并单元格首次出现时保留文本；
+    2. 后续重复网格位置写入空字符串；
+    3. 不改变原始行数和列数；
+    4. 独立单元格即使文本相同也不会被去重。
     """
 
     rows: list[
         tuple[str, ...]
     ] = []
 
-    for row in table.rows:
-        row_values = tuple(
-            _normalize_word_text(
-                cell.text
-            )
-            for cell in row.cells
-        )
+    # 保存已经出现过的底层XML Cell。
+    #
+    # 同一个合并单元格在row.cells中会返回
+    # 相同的<w:tc>对象。
+    seen_table_cells: set[
+        object
+    ] = set()
 
-        # 一行至少要存在 Cell。
+    for row in table.rows:
+        row_values: list[str] = []
+
+        for cell in row.cells:
+            xml_cell = cell._tc
+
+            if xml_cell in seen_table_cells:
+                # 保留网格位置，
+                # 但不重复写入合并单元格文本。
+                row_values.append("")
+                continue
+
+            seen_table_cells.add(
+                xml_cell
+            )
+
+            row_values.append(
+                _normalize_word_text(
+                    cell.text
+                )
+            )
+
         if not row_values:
             continue
 
         rows.append(
-            row_values
+            tuple(row_values)
         )
 
-    return tuple(
-        rows
-    )
+    return tuple(rows)
 
 
 def _table_rows_to_text(

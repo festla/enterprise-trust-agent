@@ -494,3 +494,99 @@ def test_parse_docx_preserves_direct_outline_level(
         block.text
         == "信用风险"
     )
+
+def test_parse_docx_deduplicates_merged_table_cells(
+    tmp_path: Path,
+) -> None:
+    attachments = (
+        tmp_path
+        / "attachments"
+    )
+
+    attachments.mkdir()
+
+    docx_path = (
+        attachments
+        / "merged-table.docx"
+    )
+
+    document = Document()
+
+    table = document.add_table(
+        rows=2,
+        cols=3,
+    )
+
+    merged_cell = (
+        table.cell(0, 0).merge(
+            table.cell(0, 2)
+        )
+    )
+
+    merged_cell.text = (
+        "目的：披露关键审慎监管指标。"
+    )
+
+    table.cell(1, 0).text = "指标"
+    table.cell(1, 1).text = "本期"
+    table.cell(1, 2).text = "上期"
+
+    document.save(
+        docx_path
+    )
+
+    source = _source_record(
+        path=docx_path,
+        source_type="word",
+    )
+
+    question = _question(
+        source_type="word",
+        file_label=docx_path.name,
+    )
+
+    parsed = (
+        parse_competition_text_document(
+            question=question,
+            source=source,
+            attachments_root=attachments,
+        )
+    )
+
+    table_block = next(
+        block
+        for block in parsed.blocks
+        if block.block_type
+        == "table"
+    )
+
+    assert (
+        table_block.table_rows
+        == (
+            (
+                "目的：披露关键审慎监管指标。",
+                "",
+                "",
+            ),
+            (
+                "指标",
+                "本期",
+                "上期",
+            ),
+        )
+    )
+
+    assert (
+        table_block.text.count(
+            "目的：披露关键审慎监管指标。"
+        )
+        == 1
+    )
+
+    assert (
+        table_block.text
+        == (
+            "目的：披露关键审慎监管指标。\n"
+            "指标\t本期\t上期"
+        )
+    )
