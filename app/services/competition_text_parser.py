@@ -23,7 +23,11 @@ from app.services.competition_source_catalog import (
 from app.services.page_parser import (
     normalize_page_text,
 )
+from tempfile import TemporaryDirectory
 
+from app.services.competition_legacy_doc_converter import (
+    convert_legacy_doc_to_docx,
+)
 
 class CompetitionTextParserError(
     RuntimeError
@@ -660,6 +664,27 @@ def _parse_docx(
         ),
     )
 
+def _parse_legacy_doc(
+    *,
+    path: Path,
+    question: CompetitionQuestion,
+    source: CompetitionSourceRecord,
+    attachments_root: Path,
+) -> CompetitionTextDocument:
+    """Convert one legacy DOC into a temporary DOCX and parse it."""
+
+    with TemporaryDirectory(prefix="competition-legacy-doc-") as temp_directory:
+        converted_path = convert_legacy_doc_to_docx(
+            source_path=path,
+            output_directory=Path(temp_directory),
+        )
+
+        return _parse_docx(
+            path=converted_path,
+            question=question,
+            source=source,
+            attachments_root=attachments_root,
+        )
 
 # ============================================================
 # Public API
@@ -679,11 +704,7 @@ def parse_competition_text_document(
         PDF
         DOCX
 
-    当前明确不支持：
-        legacy .doc
-
-    .doc 只存在 Frozen Test，
-    不在 Dev 阶段基于 Test 数据开发 Parser。
+    Parse one competition PDF, DOCX, or legacy DOC document.
     """
 
     path = (
@@ -725,19 +746,13 @@ def parse_competition_text_document(
             ),
         )
 
-    if (
-        source.source_type == "word"
-        and extension == ".doc"
-    ):
-        raise (
-            CompetitionUnsupportedTextFormatError(
-                "legacy .doc 当前尚未支持；"
-                "该格式仅存在于 Frozen Test，"
-                "不会在 Dev 阶段基于 Test "
-                "文档调试解析规则"
-            )
+    if path.suffix.lower() == ".doc":
+        return _parse_legacy_doc(
+            path=path,
+            question=question,
+            source=source,
+            attachments_root=attachments_root,
         )
-
     raise (
         CompetitionUnsupportedTextFormatError(
             "不支持的 Competition "

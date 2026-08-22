@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import hashlib
+import shutil
+
+import app.services.competition_text_parser as text_parser_module
 import pymupdf
 import pytest
 from docx import Document
@@ -371,31 +375,51 @@ def test_parse_docx_preserves_paragraph_table_order(
     )
 
 
-def test_parser_rejects_legacy_doc(
+def test_parser_converts_and_parses_legacy_doc(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    attachments = (
-        tmp_path
-        / "attachments"
-    )
+    attachments_root = tmp_path / "attachments"
+    attachments_root.mkdir()
 
-    attachments.mkdir()
+    original_bytes = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1legacy-doc"
+    legacy_doc_path = attachments_root / "legacy.doc"
+    legacy_doc_path.write_bytes(original_bytes)
 
-    doc_path = (
-        attachments
-        / "legacy.doc"
-    )
+    fixture_docx_path = tmp_path / "converted-fixture.docx"
+    fixture_document = Document()
+    fixture_document.add_paragraph("转换后的正文内容")
 
-    # OLE Compound File signature。
-    doc_path.write_bytes(
-        bytes.fromhex(
-            "D0CF11E0A1B11AE1"
-        )
-        + b"test"
+    table = fixture_document.add_table(rows=2, cols=2)
+    table.cell(0, 0).text = "项目"
+    table.cell(0, 1).text = "金额"
+    table.cell(1, 0).text = "资本保证金"
+    table.cell(1, 1).text = "100"
+
+    fixture_document.save(fixture_docx_path)
+
+    converted_paths: list[Path] = []
+
+    def fake_convert_legacy_doc_to_docx(
+        *,
+        source_path: Path,
+        output_directory: Path,
+    ) -> Path:
+        assert source_path == legacy_doc_path
+
+        converted_path = output_directory / "legacy.docx"
+        shutil.copyfile(fixture_docx_path, converted_path)
+        converted_paths.append(converted_path)
+        return converted_path
+
+    monkeypatch.setattr(
+        text_parser_module,
+        "convert_legacy_doc_to_docx",
+        fake_convert_legacy_doc_to_docx,
     )
 
     source = _source_record(
-        path=doc_path,
+        path=legacy_doc_path,
         source_type="word",
     )
 
@@ -404,14 +428,25 @@ def test_parser_rejects_legacy_doc(
         file_label="legacy.doc",
     )
 
-    with pytest.raises(
-        CompetitionUnsupportedTextFormatError
-    ):
-        parse_competition_text_document(
-            question=question,
-            source=source,
-            attachments_root=attachments,
-        )
+    parsed = parse_competition_text_document(
+        question=question,
+        source=source,
+        attachments_root=attachments_root,
+    )
+
+    assert {block.block_type for block in parsed.blocks} == {
+        "paragraph",
+        "table",
+    }
+
+    # 来源身份必须继续指向原始 DOC，而不是临时 DOCX。
+    assert parsed.source.relative_path == "legacy.doc"
+    assert parsed.source.sha256 == hashlib.sha256(original_bytes).hexdigest()
+
+    # 解析结束后临时转换文件已经清理。
+    assert converted_paths
+    assert not converted_paths[0].exists()
+
 
 def test_parse_docx_preserves_direct_outline_level(
     tmp_path: Path,
