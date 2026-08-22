@@ -523,14 +523,207 @@ def test_table_flushes_text_buffer(
 
     assert len(
         chunks
-    ) == 2
+    ) == 3
+
+    assert [
+        chunk.chunk_type
+        for chunk in chunks
+    ] == [
+        "text",
+        "table",
+        "text",
+    ]
+
+    assert [
+        chunk.chunk_index
+        for chunk in chunks
+    ] == [
+        0,
+        1,
+        2,
+    ]
 
     assert (
         chunks[0].text
         == "表格前正文。"
     )
 
+    table_chunk = chunks[1]
+
     assert (
-        chunks[1].text
+        table_chunk.text
+        == table_text
+    )
+
+    assert (
+        table_chunk.table_index
+        == 0
+    )
+
+    assert (
+        table_chunk.table_row_start
+        == 0
+    )
+
+    assert (
+        table_chunk.table_row_end
+        == 1
+    )
+
+    assert (
+        table_chunk.table_rows
+        == (
+            (
+                "指标",
+                "要求",
+            ),
+            (
+                "资本充足率",
+                "不得低于标准",
+            ),
+        )
+    )
+
+    assert (
+        table_chunk.table_format
+        == "table"
+    )
+
+    assert (
+        chunks[2].text
         == "表格后填写说明。"
     )
+
+    assert len(
+        {
+            chunk.chunk_id
+            for chunk in chunks
+        }
+    ) == 3
+
+
+def test_table_inherits_regulatory_context_and_nearby_metadata(
+) -> None:
+    source = _word_source()
+
+    table_rows = (
+        (
+            "指标",
+            "数值",
+        ),
+        (
+            "资本充足率",
+            "10.5%",
+        ),
+    )
+
+    table_text = (
+        "指标\t数值\n"
+        "资本充足率\t10.5%"
+    )
+
+    document = (
+        CompetitionTextDocument(
+            source=source,
+            blocks=(
+                _word_block(
+                    source=source,
+                    block_index=0,
+                    paragraph_index=0,
+                    text="资本管理",
+                    outline_level=0,
+                ),
+                _word_block(
+                    source=source,
+                    block_index=1,
+                    paragraph_index=1,
+                    text="二、披露表格",
+                ),
+                _word_block(
+                    source=source,
+                    block_index=2,
+                    paragraph_index=2,
+                    text="单位：百分比",
+                ),
+                CompetitionTextBlock(
+                    block_id=(
+                        f"block:"
+                        f"{source.doc_id}:"
+                        "00003"
+                    ),
+                    source_id=(
+                        source.source_id
+                    ),
+                    doc_id=(
+                        source.doc_id
+                    ),
+                    source_type="word",
+                    block_index=3,
+                    block_type="table",
+                    text=table_text,
+                    table_index=0,
+                    table_rows=table_rows,
+                ),
+                _word_block(
+                    source=source,
+                    block_index=4,
+                    paragraph_index=3,
+                    text="填写说明。",
+                ),
+            ),
+        )
+    )
+
+    chunks = (
+        build_competition_text_chunks(
+            document,
+            max_chars=500,
+        )
+    )
+
+    assert [
+        chunk.chunk_type
+        for chunk in chunks
+    ] == [
+        "text",
+        "table",
+        "text",
+    ]
+
+    table_chunk = chunks[1]
+
+    assert (
+        table_chunk.section_path
+        == ("资本管理",)
+    )
+
+    assert (
+        table_chunk.item_path
+        == ("二、披露表格",)
+    )
+
+    assert (
+        table_chunk.table_unit
+        == "单位：百分比"
+    )
+
+    assert (
+        table_chunk.table_rows
+        == table_rows
+    )
+
+    assert [
+        chunk.chunk_index
+        for chunk in chunks
+    ] == [
+        0,
+        1,
+        2,
+    ]
+
+    assert len(
+        {
+            chunk.chunk_id
+            for chunk in chunks
+        }
+    ) == len(chunks)

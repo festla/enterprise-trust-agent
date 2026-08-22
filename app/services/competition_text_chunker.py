@@ -17,6 +17,13 @@ from app.services.competition_regulatory_context import (
     CompetitionRegulatoryContextTracker,
 )
 
+from app.services.competition_table_chunker import (
+    build_competition_table_chunks,
+)
+from app.services.competition_table_context import (
+    build_table_context,
+)
+
 
 DEFAULT_MAX_CHARS = 900
 
@@ -758,6 +765,81 @@ def _build_chunk_from_buffer(
 
 
 # ============================================================
+# Table Nearby Text
+# ============================================================
+
+
+def _collect_nearby_table_text(
+    blocks: tuple[
+        CompetitionTextBlock,
+        ...,
+    ],
+    *,
+    table_position: int,
+    window: int = 2,
+) -> tuple[str, ...]:
+    """
+    收集表格前后有限数量的 Word 段落，
+    用于提取标题、单位、频率和用途。
+
+    遇到另一个表格时停止，
+    避免上下文跨表传播。
+    """
+
+    if window <= 0:
+        return ()
+
+    before = []
+
+    for candidate in reversed(
+        blocks[:table_position]
+    ):
+        if (
+            candidate.block_type
+            == "table"
+        ):
+            break
+
+        if (
+            candidate.block_type
+            == "paragraph"
+        ):
+            before.append(
+                candidate.text
+            )
+
+            if len(before) >= window:
+                break
+
+    before.reverse()
+
+    after = []
+
+    for candidate in blocks[
+        table_position + 1:
+    ]:
+        if (
+            candidate.block_type
+            == "table"
+        ):
+            break
+
+        if (
+            candidate.block_type
+            == "paragraph"
+        ):
+            after.append(
+                candidate.text
+            )
+
+            if len(after) >= window:
+                break
+
+    return tuple(
+        before + after
+    )
+
+# ============================================================
 # Public API
 # ============================================================
 
@@ -776,18 +858,13 @@ def build_competition_text_chunks(
     当前处理：
 
         DOCX paragraph
-        PDF page_text
-
-    当前跳过：
-
         DOCX table
-
-    Table 在 Step 3C.5c 单独实现。
+        PDF page_text
 
     核心规则：
 
     1. Regulatory Context 不同 -> flush
-    2. Table boundary -> flush
+    2. Table boundary -> flush + table chunks
     3. 超过 max_chars -> flush
     4. 连续相同 Context -> 合并
     """
@@ -827,29 +904,62 @@ def build_competition_text_chunks(
 
         buffer.clear()
 
-    for block in (
+    for block_position, block in enumerate(
         document.blocks
     ):
         # ====================================================
-        # Table
+        # Word Table
         #
-        # 当前 Table 不进入 Text Chunk，
-        # 但必须作为一个明确边界。
-        #
-        # 否则：
-        #
-        # 表格前正文
-        # TABLE
-        # 表格后填写说明
-        #
-        # 可能错误合成一个 Text Chunk。
+        # 1. flush 前方正文；
+        # 2. 获取当前法规上下文；
+        # 3. 生成一个或多个 table chunks；
+        # 4. 保持 Chunk 索引连续。
         # ====================================================
 
         if (
             block.block_type
             == "table"
         ):
+            # 表格是明确边界：
+            # 先结束前方 Text Chunk。
             flush()
+
+            nearby_text = (
+                _collect_nearby_table_text(
+                    document.blocks,
+                    table_position=(
+                        block_position
+                    ),
+                )
+            )
+
+            table_context = (
+                build_table_context(
+                    table_block=block,
+                    context=(
+                        tracker.snapshot()
+                    ),
+                    nearby_text=(
+                        nearby_text
+                    ),
+                )
+            )
+
+            table_chunks = (
+                build_competition_table_chunks(
+                    table_block=block,
+                    context=table_context,
+                    start_chunk_index=len(
+                        chunks
+                    ),
+                    max_chars=max_chars,
+                )
+            )
+
+            chunks.extend(
+                table_chunks
+            )
+
             continue
 
         # ====================================================
