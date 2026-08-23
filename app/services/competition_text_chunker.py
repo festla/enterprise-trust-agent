@@ -770,6 +770,67 @@ def _build_chunk_from_buffer(
 # ============================================================
 
 
+def _block_context_texts(
+    block: CompetitionTextBlock,
+) -> tuple[str, ...]:
+    """
+    将表格附近的正文 Block 转成独立上下文文本。
+
+    Word paragraph：
+        保留为一个候选。
+
+    PDF page_text：
+        按非空行拆分，避免整页文本被误当作
+        一个表格标题或元数据字段。
+    """
+
+    if block.block_type == "paragraph":
+        return (
+            block.text,
+        )
+
+    if block.block_type == "page_text":
+        return tuple(
+            line.strip()
+            for line in block.text.splitlines()
+            if line.strip()
+        )
+
+    return ()
+
+
+def _extract_latest_table_title(
+    block: CompetitionTextBlock,
+) -> str | None:
+    """
+    从一个普通正文 Block 中寻找最近出现的
+    显式表格标题。
+
+    PDF page_text 可能同时包含多行，
+    因此从后向前寻找离下一张表最近的标题。
+    """
+
+    candidates = (
+        _block_context_texts(
+            block
+        )
+    )
+
+    for candidate in reversed(
+        candidates
+    ):
+        title = (
+            extract_explicit_table_title(
+                candidate
+            )
+        )
+
+        if title is not None:
+            return title
+
+    return None
+
+
 def _collect_nearby_table_text(
     blocks: tuple[
         CompetitionTextBlock,
@@ -780,8 +841,8 @@ def _collect_nearby_table_text(
     window: int = 2,
 ) -> tuple[str, ...]:
     """
-    收集表格前后有限数量的 Word 段落，
-    用于提取标题、单位、频率和用途。
+    收集表格前后有限数量的 Word 段落或
+    PDF 文本行，用于提取标题、单位、频率和用途。
 
     遇到另一个表格时停止，
     避免上下文跨表传播。
@@ -790,7 +851,7 @@ def _collect_nearby_table_text(
     if window <= 0:
         return ()
 
-    before = []
+    before: list[str] = []
 
     for candidate in reversed(
         blocks[:table_position]
@@ -801,20 +862,28 @@ def _collect_nearby_table_text(
         ):
             break
 
-        if (
-            candidate.block_type
-            == "paragraph"
+        candidate_texts = (
+            _block_context_texts(
+                candidate
+            )
+        )
+
+        for text in reversed(
+            candidate_texts
         ):
             before.append(
-                candidate.text
+                text
             )
 
             if len(before) >= window:
                 break
 
+        if len(before) >= window:
+            break
+
     before.reverse()
 
-    after = []
+    after: list[str] = []
 
     for candidate in blocks[
         table_position + 1:
@@ -825,16 +894,20 @@ def _collect_nearby_table_text(
         ):
             break
 
-        if (
-            candidate.block_type
-            == "paragraph"
+        for text in (
+            _block_context_texts(
+                candidate
+            )
         ):
             after.append(
-                candidate.text
+                text
             )
 
             if len(after) >= window:
                 break
+
+        if len(after) >= window:
+            break
 
     return tuple(
         before + after
@@ -861,6 +934,7 @@ def build_competition_text_chunks(
         DOCX paragraph
         DOCX table
         PDF page_text
+        PDF table
 
     核心规则：
 
@@ -924,23 +998,19 @@ def build_competition_text_chunks(
         # 4. 保持 Chunk 索引连续。
         # ====================================================
 
-        if (
-            block.block_type
-            == "paragraph"
-        ):
-            explicit_table_title = (
-                extract_explicit_table_title(
-                    block.text
-                )
+        explicit_table_title = (
+            _extract_latest_table_title(
+                block
             )
+        )
 
-            if (
+        if (
+            explicit_table_title
+            is not None
+        ):
+            active_table_title = (
                 explicit_table_title
-                is not None
-            ):
-                active_table_title = (
-                    explicit_table_title
-                )
+            )
 
         if (
             block.block_type

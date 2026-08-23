@@ -216,7 +216,7 @@ def _build_table_chunk(
 ) -> CompetitionTextChunk:
     if table_block.table_index is None:
         raise CompetitionTableChunkError(
-            "Word table Block 缺少 "
+            "table Block 缺少 "
             "table_index"
         )
 
@@ -229,6 +229,35 @@ def _build_table_chunk(
             "Table Chunk 没有可检索文本"
         )
 
+    page_start: int | None = None
+    page_end: int | None = None
+
+    pdf_bbox: tuple[
+        float,
+        float,
+        float,
+        float,
+    ] | None = None
+
+    if (
+        table_block.source_type
+        == "pdf"
+    ):
+        if table_block.page is None:
+            raise CompetitionTableChunkError(
+                "PDF table Block 缺少 page"
+            )
+
+        if table_block.pdf_bbox is None:
+            raise CompetitionTableChunkError(
+                "PDF table Block 缺少 "
+                "pdf_bbox"
+            )
+
+        page_start = table_block.page
+        page_end = table_block.page
+        pdf_bbox = table_block.pdf_bbox
+
     return CompetitionTextChunk(
         chunk_id=_build_chunk_id(
             doc_id=table_block.doc_id,
@@ -238,7 +267,9 @@ def _build_table_chunk(
             table_block.source_id
         ),
         doc_id=table_block.doc_id,
-        source_type="word",
+        source_type=(
+            table_block.source_type
+        ),
         chunk_index=chunk_index,
         chunk_type="table",
         source_spans=(
@@ -266,11 +297,16 @@ def _build_table_chunk(
         article=context.article,
         item_path=context.item_path,
 
-        # 表格自身不包含 Article 行，
+        # 表格自身通常不包含 Article 行，
         # 因此存在 Article 时属于继承上下文。
         article_inherited=(
             context.article is not None
         ),
+
+        page_start=page_start,
+        page_end=page_end,
+        pdf_bbox=pdf_bbox,
+
         table_index=(
             table_block.table_index
         ),
@@ -292,7 +328,6 @@ def _build_table_chunk(
         ),
     )
 
-
 def build_competition_table_chunks(
     *,
     table_block: CompetitionTextBlock,
@@ -306,7 +341,7 @@ def build_competition_table_chunks(
     ...,
 ]:
     """
-    将一个 Word Table Block 构造成
+    将一个 Word/PDF Table Block 构造成
     一个或多个统一 CompetitionTextChunk。
 
     保证：
@@ -331,14 +366,6 @@ def build_competition_table_chunks(
         raise CompetitionTableChunkError(
             "table_block 必须是 "
             "table 类型"
-        )
-
-    if (
-        table_block.source_type
-        != "word"
-    ):
-        raise CompetitionTableChunkError(
-            "当前只支持 Word table"
         )
 
     row_slices = _split_table_rows(

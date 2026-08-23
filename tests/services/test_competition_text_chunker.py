@@ -630,6 +630,132 @@ def test_table_flushes_text_buffer(
         }
     ) == 3
 
+def test_pdf_table_flushes_text_and_preserves_location(
+) -> None:
+    source = _pdf_source()
+
+    table_rows = (
+        (
+            "业务类型",
+            "期交",
+        ),
+        (
+            "个人",
+            "35%",
+        ),
+    )
+
+    table_text = (
+        "业务类型\t期交\n"
+        "个人\t35%"
+    )
+
+    document = CompetitionTextDocument(
+        source=source,
+        blocks=(
+            CompetitionTextBlock(
+                block_id=(
+                    f"block:{source.doc_id}:"
+                    "00000"
+                ),
+                source_id=source.source_id,
+                doc_id=source.doc_id,
+                source_type="pdf",
+                block_index=0,
+                block_type="page_text",
+                text=(
+                    "表PDF1：业务结构\n"
+                    "表格前说明。"
+                ),
+                page=2,
+            ),
+            CompetitionTextBlock(
+                block_id=(
+                    f"block:{source.doc_id}:"
+                    "00001"
+                ),
+                source_id=source.source_id,
+                doc_id=source.doc_id,
+                source_type="pdf",
+                block_index=1,
+                block_type="table",
+                text=table_text,
+                page=2,
+                pdf_bbox=(
+                    100.0,
+                    200.0,
+                    500.0,
+                    400.0,
+                ),
+                table_index=0,
+                table_rows=table_rows,
+            ),
+            CompetitionTextBlock(
+                block_id=(
+                    f"block:{source.doc_id}:"
+                    "00002"
+                ),
+                source_id=source.source_id,
+                doc_id=source.doc_id,
+                source_type="pdf",
+                block_index=2,
+                block_type="page_text",
+                text="表格后说明。",
+                page=2,
+            ),
+        ),
+    )
+
+    chunks = build_competition_text_chunks(
+        document,
+        max_chars=500,
+    )
+
+    assert [
+        chunk.chunk_type
+        for chunk in chunks
+    ] == [
+        "text",
+        "table",
+        "text",
+    ]
+
+    assert [
+        chunk.chunk_index
+        for chunk in chunks
+    ] == [
+        0,
+        1,
+        2,
+    ]
+
+    table_chunk = chunks[1]
+
+    assert table_chunk.source_type == "pdf"
+    assert table_chunk.page_start == 2
+    assert table_chunk.page_end == 2
+
+    assert table_chunk.pdf_bbox == (
+        100.0,
+        200.0,
+        500.0,
+        400.0,
+    )
+
+    assert table_chunk.table_index == 0
+    assert table_chunk.table_rows == table_rows
+
+    assert (
+        table_chunk.table_title
+        == "表PDF1：业务结构"
+    )
+
+    assert len(
+        {
+            chunk.chunk_id
+            for chunk in chunks
+        }
+    ) == 3
 
 def test_table_inherits_regulatory_context_and_nearby_metadata(
 ) -> None:

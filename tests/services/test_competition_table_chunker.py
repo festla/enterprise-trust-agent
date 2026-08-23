@@ -56,6 +56,44 @@ def _table_block(
         table_rows=rows,
     )
 
+def _pdf_table_block(
+    rows: tuple[
+        tuple[str, ...],
+        ...,
+    ],
+) -> CompetitionTextBlock:
+    text = _render_rows(
+        rows
+    )
+
+    return CompetitionTextBlock(
+        block_id=(
+            "block:"
+            "doc_src_pdf_table_test_"
+            "0123456789abcdef01234567:"
+            "00008"
+        ),
+        source_id=(
+            "src_pdf_table_test"
+        ),
+        doc_id=(
+            "doc_src_pdf_table_test_"
+            "0123456789abcdef01234567"
+        ),
+        source_type="pdf",
+        block_index=8,
+        block_type="table",
+        text=text,
+        page=4,
+        pdf_bbox=(
+            100.0,
+            200.0,
+            500.0,
+            400.0,
+        ),
+        table_index=3,
+        table_rows=rows,
+    )
 
 def _table_context(
 ) -> CompetitionTableContext:
@@ -298,3 +336,61 @@ def test_build_table_chunks_rejects_non_table_block(
             table_block=block,
             context=_table_context(),
         )
+
+def test_build_pdf_table_chunk_preserves_page_and_bbox(
+) -> None:
+    rows = (
+        (
+            "业务类型",
+            "期交",
+        ),
+        (
+            "个人",
+            "35%",
+        ),
+    )
+
+    block = _pdf_table_block(
+        rows
+    )
+
+    chunks = (
+        build_competition_table_chunks(
+            table_block=block,
+            context=_table_context(),
+            start_chunk_index=5,
+        )
+    )
+
+    assert len(chunks) == 1
+
+    chunk = chunks[0]
+
+    assert chunk.source_type == "pdf"
+    assert chunk.chunk_type == "table"
+    assert chunk.chunk_index == 5
+
+    assert chunk.page_start == 4
+    assert chunk.page_end == 4
+
+    assert chunk.pdf_bbox == (
+        100.0,
+        200.0,
+        500.0,
+        400.0,
+    )
+
+    assert chunk.table_index == 3
+    assert chunk.table_row_start == 0
+    assert chunk.table_row_end == 1
+    assert chunk.table_rows == rows
+
+    assert len(
+        chunk.source_spans
+    ) == 1
+
+    assert (
+        chunk.source_spans[0]
+        .block_id
+        == block.block_id
+    )
