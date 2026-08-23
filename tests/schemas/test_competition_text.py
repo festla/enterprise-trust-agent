@@ -93,6 +93,194 @@ def test_pdf_page_text_document(
         == "page_text"
     )
 
+def test_pdf_document_preserves_table_structure(
+) -> None:
+    source = _pdf_source()
+
+    table = CompetitionTextBlock(
+        block_id=(
+            "block:"
+            "src_0123456789abcdef:"
+            "00000"
+        ),
+        source_id=source.source_id,
+        doc_id=source.doc_id,
+        source_type="pdf",
+        block_index=0,
+        block_type="table",
+        text=(
+            "业务类型\t期交\t趸交\n"
+            "个人\t35%\t18%"
+        ),
+        page=3,
+        pdf_bbox=(
+            100.0,
+            120.0,
+            500.0,
+            300.0,
+        ),
+        table_index=0,
+        table_rows=(
+            (
+                "业务类型",
+                "期交",
+                "趸交",
+            ),
+            (
+                "个人",
+                "35%",
+                "18%",
+            ),
+        ),
+    )
+
+    document = CompetitionTextDocument(
+        source=source,
+        blocks=(
+            table,
+        ),
+    )
+
+    assert (
+        document.blocks[0].page
+        == 3
+    )
+
+    assert (
+        document.blocks[0].pdf_bbox
+        == (
+            100.0,
+            120.0,
+            500.0,
+            300.0,
+        )
+    )
+
+    assert (
+        document.blocks[0]
+        .table_rows[1][1]
+        == "35%"
+    )
+
+
+def test_pdf_table_requires_page(
+) -> None:
+    source = _pdf_source()
+
+    with pytest.raises(
+        ValidationError
+    ):
+        CompetitionTextBlock(
+            block_id="block:test",
+            source_id=source.source_id,
+            doc_id=source.doc_id,
+            source_type="pdf",
+            block_index=0,
+            block_type="table",
+            text="测试表格",
+            pdf_bbox=(
+                10.0,
+                20.0,
+                200.0,
+                100.0,
+            ),
+            table_index=0,
+            table_rows=(
+                (
+                    "项目",
+                    "数值",
+                ),
+            ),
+        )
+
+
+def test_pdf_table_requires_bbox(
+) -> None:
+    source = _pdf_source()
+
+    with pytest.raises(
+        ValidationError
+    ):
+        CompetitionTextBlock(
+            block_id="block:test",
+            source_id=source.source_id,
+            doc_id=source.doc_id,
+            source_type="pdf",
+            block_index=0,
+            block_type="table",
+            text="测试表格",
+            page=1,
+            table_index=0,
+            table_rows=(
+                (
+                    "项目",
+                    "数值",
+                ),
+            ),
+        )
+
+
+def test_pdf_table_rejects_invalid_bbox(
+) -> None:
+    source = _pdf_source()
+
+    with pytest.raises(
+        ValidationError
+    ):
+        CompetitionTextBlock(
+            block_id="block:test",
+            source_id=source.source_id,
+            doc_id=source.doc_id,
+            source_type="pdf",
+            block_index=0,
+            block_type="table",
+            text="测试表格",
+            page=1,
+            pdf_bbox=(
+                200.0,
+                20.0,
+                100.0,
+                100.0,
+            ),
+            table_index=0,
+            table_rows=(
+                (
+                    "项目",
+                    "数值",
+                ),
+            ),
+        )
+
+
+def test_word_table_rejects_pdf_bbox(
+) -> None:
+    source = _word_source()
+
+    with pytest.raises(
+        ValidationError
+    ):
+        CompetitionTextBlock(
+            block_id="block:test",
+            source_id=source.source_id,
+            doc_id=source.doc_id,
+            source_type="word",
+            block_index=0,
+            block_type="table",
+            text="测试表格",
+            pdf_bbox=(
+                10.0,
+                20.0,
+                200.0,
+                100.0,
+            ),
+            table_index=0,
+            table_rows=(
+                (
+                    "项目",
+                    "数值",
+                ),
+            ),
+        )
 
 def test_word_document_preserves_paragraph_and_table(
 ) -> None:

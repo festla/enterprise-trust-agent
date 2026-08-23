@@ -1,4 +1,5 @@
 from __future__ import annotations
+import math
 
 from typing import (
     Literal,
@@ -85,6 +86,17 @@ class CompetitionTextBlock(
         default=None,
         ge=1,
     )
+
+    # PDF 页面中的表格区域：
+    # (x0, y0, x1, y1)
+    #
+    # 只允许 PDF table 使用。
+    pdf_bbox: tuple[
+        float,
+        float,
+        float,
+        float,
+    ] | None = None
 
     # ========================================================
     # Word Location
@@ -178,10 +190,11 @@ class CompetitionTextBlock(
                 or self.table_index is not None
                 or self.style_name is not None
                 or self.outline_level is not None
+                or self.pdf_bbox is not None
             ):
                 raise ValueError(
                     "PDF page_text 不能包含 "
-                    "Word paragraph/table/style 信息"
+                    "paragraph/table/style/bbox 信息"
                 )
 
             if self.table_rows:
@@ -220,6 +233,12 @@ class CompetitionTextBlock(
                     "table_index"
                 )
 
+            if self.pdf_bbox is not None:
+                raise ValueError(
+                    "Word paragraph 不能包含 "
+                    "pdf_bbox"
+                )
+
             if self.table_rows:
                 raise ValueError(
                     "paragraph 不能包含 "
@@ -229,25 +248,14 @@ class CompetitionTextBlock(
             return self
 
         # ====================================================
-        # Word Table
+        # Word / PDF Table
         # ====================================================
 
         if self.block_type == "table":
-            if self.source_type != "word":
-                raise ValueError(
-                    "table Block "
-                    "当前只允许来自 Word"
-                )
-
             if self.table_index is None:
                 raise ValueError(
-                    "Word table 必须提供 "
+                    "table Block 必须提供 "
                     "table_index"
-                )
-
-            if self.page is not None:
-                raise ValueError(
-                    "Word table 不使用 page"
                 )
 
             if (
@@ -264,32 +272,90 @@ class CompetitionTextBlock(
                 or self.outline_level is not None
             ):
                 raise ValueError(
-                    "Word table 不能包含 "
+                    "table 不能包含 "
                     "paragraph style/outline 信息"
                 )
 
             if not self.table_rows:
                 raise ValueError(
-                    "Word table 必须保留 "
+                    "table Block 必须保留 "
                     "table_rows"
                 )
 
             if any(
                 not row
-                for row
-                in self.table_rows
+                for row in self.table_rows
             ):
                 raise ValueError(
                     "table_rows "
                     "不能包含空行"
                 )
 
-            return self
+            # ================================================
+            # Word Table
+            # ================================================
 
-        raise ValueError(
-            "未知 block_type"
-        )
+            if self.source_type == "word":
+                if self.page is not None:
+                    raise ValueError(
+                        "Word table 不使用 page"
+                    )
 
+                if self.pdf_bbox is not None:
+                    raise ValueError(
+                        "Word table 不能包含 "
+                        "pdf_bbox"
+                    )
+
+                return self
+
+            # ================================================
+            # PDF Table
+            # ================================================
+
+            if self.source_type == "pdf":
+                if self.page is None:
+                    raise ValueError(
+                        "PDF table 必须提供 page"
+                    )
+
+                if self.pdf_bbox is None:
+                    raise ValueError(
+                        "PDF table 必须提供 "
+                        "pdf_bbox"
+                    )
+
+                (
+                    x0,
+                    y0,
+                    x1,
+                    y1,
+                ) = self.pdf_bbox
+
+                if not all(
+                    math.isfinite(value)
+                    for value in self.pdf_bbox
+                ):
+                    raise ValueError(
+                        "PDF table 的 pdf_bbox "
+                        "必须是有限数值"
+                    )
+
+                if (
+                    x1 <= x0
+                    or y1 <= y0
+                ):
+                    raise ValueError(
+                        "PDF table 的 pdf_bbox "
+                        "坐标范围无效"
+                    )
+
+                return self
+
+            raise ValueError(
+                "table Block 只能来自 "
+                "Word 或 PDF"
+            )
 
 class CompetitionTextDocument(
     BaseModel
