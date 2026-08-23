@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+import math
+from dataclasses import dataclass
+from tempfile import TemporaryDirectory
 
 import pymupdf
 from docx import Document
@@ -23,7 +26,7 @@ from app.services.competition_source_catalog import (
 from app.services.page_parser import (
     normalize_page_text,
 )
-from tempfile import TemporaryDirectory
+
 
 from app.services.competition_legacy_doc_converter import (
     convert_legacy_doc_to_docx,
@@ -98,6 +101,263 @@ def _normalize_word_text(
 # PDF
 # ============================================================
 
+@dataclass(frozen=True)
+class _PdfTableCandidate:
+    table_index: int
+    bbox: tuple[
+        float,
+        float,
+        float,
+        float,
+    ]
+    rows: tuple[
+        tuple[str, ...],
+        ...
+    ]
+    text: str
+
+
+def _normalize_pdf_table_cell(
+    value: object,
+) -> str:
+    if value is None:
+        return ""
+
+    return normalize_page_text(
+        str(value)
+    )
+
+
+def _extract_pdf_table_rows(
+    table,
+) -> tuple[
+    tuple[str, ...],
+    ...,
+]:
+    try:
+        raw_rows = table.extract()
+    except Exception as exc:
+        raise CompetitionTextParserError(
+            "PDF表格单元格提取失败"
+        ) from exc
+
+    if not raw_rows:
+        return ()
+
+    try:
+        declared_columns = int(
+            table.col_count
+        )
+    except (
+        TypeError,
+        ValueError,
+    ) as exc:
+        raise CompetitionTextParserError(
+            "PDF表格列数无效"
+        ) from exc
+
+    observed_columns = max(
+        (
+            len(row)
+            if row is not None
+            else 0
+        )
+        for row in raw_rows
+    )
+
+    column_count = max(
+        declared_columns,
+        observed_columns,
+    )
+
+    if column_count <= 0:
+        return ()
+
+    rows: list[
+        tuple[str, ...]
+    ] = []
+
+    for raw_row in raw_rows:
+        values = [
+            _normalize_pdf_table_cell(
+                value
+            )
+            for value in (
+                raw_row
+                or ()
+            )
+        ]
+
+        if len(values) < column_count:
+            values.extend(
+                [""] * (
+                    column_count
+                    - len(values)
+                )
+            )
+
+        rows.append(
+            tuple(
+                values[
+                    :column_count
+                ]
+            )
+        )
+
+    return tuple(
+        rows
+    )
+
+
+def _extract_pdf_table_candidates(
+    *,
+    page,
+    page_number: int,
+    start_table_index: int,
+) -> tuple[
+    tuple[
+        _PdfTableCandidate,
+        ...
+    ],
+    int,
+]:
+    try:
+        finder = page.find_tables()
+        detected_tables = tuple(
+            finder.tables
+        )
+    except Exception as exc:
+        raise CompetitionTextParserError(
+            "PDF表格检测失败: "
+            f"page={page_number}"
+        ) from exc
+
+    extracted: list[
+        tuple[
+            tuple[
+                float,
+                float,
+                float,
+                float,
+            ],
+            tuple[
+                tuple[str, ...],
+                ...
+            ],
+            str,
+        ]
+    ] = []
+
+    for table in detected_tables:
+        try:
+            raw_bbox = tuple(
+                float(value)
+                for value in table.bbox
+            )
+        except (
+            TypeError,
+            ValueError,
+        ) as exc:
+            raise CompetitionTextParserError(
+                "PDF表格坐标无效: "
+                f"page={page_number}"
+            ) from exc
+
+        if len(raw_bbox) != 4:
+            raise CompetitionTextParserError(
+                "PDF表格坐标必须包含4个数值: "
+                f"page={page_number}"
+            )
+
+        bbox = (
+            raw_bbox[0],
+            raw_bbox[1],
+            raw_bbox[2],
+            raw_bbox[3],
+        )
+
+        if not all(
+            math.isfinite(value)
+            for value in bbox
+        ):
+            raise CompetitionTextParserError(
+                "PDF表格坐标包含非有限数值: "
+                f"page={page_number}"
+            )
+
+        (
+            x0,
+            y0,
+            x1,
+            y1,
+        ) = bbox
+
+        if (
+            x1 <= x0
+            or y1 <= y0
+        ):
+            raise CompetitionTextParserError(
+                "PDF表格坐标范围无效: "
+                f"page={page_number}"
+            )
+
+        rows = _extract_pdf_table_rows(
+            table
+        )
+
+        if not rows:
+            continue
+
+        text = _table_rows_to_text(
+            rows
+        )
+
+        # 全空表格不产生检索Block，也不从页面正文中排除。
+        if not text:
+            continue
+
+        extracted.append(
+            (
+                bbox,
+                rows,
+                text,
+            )
+        )
+
+    # 按页面中的视觉阅读顺序排列。
+    extracted.sort(
+        key=lambda item: (
+            item[0][1],
+            item[0][0],
+        )
+    )
+
+    candidates = tuple(
+        _PdfTableCandidate(
+            table_index=(
+                start_table_index
+                + offset
+            ),
+            bbox=bbox,
+            rows=rows,
+            text=text,
+        )
+        for offset, (
+            bbox,
+            rows,
+            text,
+        ) in enumerate(
+            extracted
+        )
+    )
+
+    return (
+        candidates,
+        (
+            start_table_index
+            + len(candidates)
+        ),
+    )
 
 def _parse_pdf(
     *,
@@ -141,27 +401,13 @@ def _parse_pdf(
             CompetitionTextBlock
         ] = []
 
-        for page_index in range(
-            document.page_count
-        ):
-            page = document.load_page(
-                page_index
-            )
+        next_table_index = 0
 
-            # =================================================
-            # 与旧 page_parser 保持一致：
-            # 先进行 PyMuPDF plain-text extraction，
-            # 再调用已有 normalize_page_text。
-            #
-            # 当前不主动切换 sort=True，
-            # 避免在还没有 Dev failure 的情况下
-            # 改变旧解析行为。
-            # =================================================
-
-            raw_text = page.get_text(
-                "text"
-            )
-
+        def append_page_text(
+            *,
+            raw_text: object,
+            page_number: int,
+        ) -> None:
             if not isinstance(
                 raw_text,
                 str,
@@ -176,12 +422,8 @@ def _parse_pdf(
                 )
             )
 
-            # 空页不产生 Retrieval Block。
-            #
-            # 当前 QA-used PDF audit 中没有空文本页，
-            # 但 Parser 本身仍允许普通 PDF 出现空页。
             if not normalized_text:
-                continue
+                return
 
             block_index = len(
                 blocks
@@ -191,34 +433,182 @@ def _parse_pdf(
                 CompetitionTextBlock(
                     block_id=_build_block_id(
                         doc_id=(
-                            knowledge_source
-                            .doc_id
+                            knowledge_source.doc_id
                         ),
-                        block_index=(
-                            block_index
-                        ),
+                        block_index=block_index,
                     ),
                     source_id=(
-                        knowledge_source
-                        .source_id
+                        knowledge_source.source_id
                     ),
                     doc_id=(
-                        knowledge_source
-                        .doc_id
+                        knowledge_source.doc_id
                     ),
                     source_type="pdf",
-                    block_index=(
-                        block_index
-                    ),
+                    block_index=block_index,
                     block_type="page_text",
                     text=normalized_text,
+                    page=page_number,
+                )
+            )
 
-                    # PDF 页码对用户采用 1-based。
-                    page=(
-                        page_index + 1
+        def append_table(
+            *,
+            candidate: _PdfTableCandidate,
+            page_number: int,
+        ) -> None:
+            block_index = len(
+                blocks
+            )
+
+            blocks.append(
+                CompetitionTextBlock(
+                    block_id=_build_block_id(
+                        doc_id=(
+                            knowledge_source.doc_id
+                        ),
+                        block_index=block_index,
+                    ),
+                    source_id=(
+                        knowledge_source.source_id
+                    ),
+                    doc_id=(
+                        knowledge_source.doc_id
+                    ),
+                    source_type="pdf",
+                    block_index=block_index,
+                    block_type="table",
+                    text=candidate.text,
+                    page=page_number,
+                    pdf_bbox=(
+                        candidate.bbox
+                    ),
+                    table_index=(
+                        candidate.table_index
+                    ),
+                    table_rows=(
+                        candidate.rows
                     ),
                 )
             )
+
+        for page_index in range(
+            document.page_count
+        ):
+            page = document.load_page(
+                page_index
+            )
+
+            page_number = (
+                page_index + 1
+            )
+
+            (
+                table_candidates,
+                next_table_index,
+            ) = (
+                _extract_pdf_table_candidates(
+                    page=page,
+                    page_number=page_number,
+                    start_table_index=(
+                        next_table_index
+                    ),
+                )
+            )
+
+            # 没有表格时保持原有提取行为，
+            # 避免改变已经冻结的Dev PDF结果。
+            if not table_candidates:
+                append_page_text(
+                    raw_text=page.get_text(
+                        "text"
+                    ),
+                    page_number=page_number,
+                )
+
+                continue
+
+            page_rect = page.rect
+
+            page_x0 = float(
+                page_rect.x0
+            )
+
+            page_y0 = float(
+                page_rect.y0
+            )
+
+            page_x1 = float(
+                page_rect.x1
+            )
+
+            page_y1 = float(
+                page_rect.y1
+            )
+
+            cursor_y = page_y0
+
+            for candidate in (
+                table_candidates
+            ):
+                table_y0 = min(
+                    max(
+                        candidate.bbox[1],
+                        page_y0,
+                    ),
+                    page_y1,
+                )
+
+                table_y1 = min(
+                    max(
+                        candidate.bbox[3],
+                        page_y0,
+                    ),
+                    page_y1,
+                )
+
+                # 提取表格上方的普通正文。
+                if table_y0 > cursor_y:
+                    clip = pymupdf.Rect(
+                        page_x0,
+                        cursor_y,
+                        page_x1,
+                        table_y0,
+                    )
+
+                    append_page_text(
+                        raw_text=page.get_text(
+                            "text",
+                            clip=clip,
+                        ),
+                        page_number=page_number,
+                    )
+
+                append_table(
+                    candidate=candidate,
+                    page_number=page_number,
+                )
+
+                cursor_y = max(
+                    cursor_y,
+                    table_y1,
+                )
+
+            # 提取最后一个表格下方的普通正文。
+            if cursor_y < page_y1:
+                clip = pymupdf.Rect(
+                    page_x0,
+                    cursor_y,
+                    page_x1,
+                    page_y1,
+                )
+
+                append_page_text(
+                    raw_text=page.get_text(
+                        "text",
+                        clip=clip,
+                    ),
+                    page_number=page_number,
+                )
 
         if not blocks:
             raise (

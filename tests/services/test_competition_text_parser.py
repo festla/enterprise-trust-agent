@@ -4,6 +4,7 @@ from pathlib import Path
 
 import hashlib
 import shutil
+from types import SimpleNamespace
 
 import app.services.competition_text_parser as text_parser_module
 import pymupdf
@@ -17,10 +18,10 @@ from app.schemas.competition import (
     CompetitionSourceRecord,
 )
 from app.services.competition_text_parser import (
+    CompetitionTextParserError,
     CompetitionUnsupportedTextFormatError,
     parse_competition_text_document,
 )
-
 
 def _source_record(
     *,
@@ -155,6 +156,259 @@ def test_parse_pdf_creates_page_blocks(
         is not None
     )
 
+def test_parse_pdf_preserves_table_and_removes_duplicate_text(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attachments = (
+        tmp_path
+        / "attachments"
+    )
+
+    attachments.mkdir()
+
+    pdf_path = (
+        attachments
+        / "table.pdf"
+    )
+
+    pdf_path.write_bytes(
+        b"%PDF-fake-table"
+    )
+
+    table = SimpleNamespace(
+        row_count=2,
+        col_count=2,
+        bbox=(
+            100.0,
+            200.0,
+            500.0,
+            400.0,
+        ),
+        extract=lambda: [
+            [
+                "业务类型",
+                "期交",
+            ],
+            [
+                "个人",
+                "35%",
+            ],
+        ],
+    )
+
+    class FakePage:
+        rect = pymupdf.Rect(
+            0.0,
+            0.0,
+            600.0,
+            800.0,
+        )
+
+        def find_tables(
+            self,
+        ):
+            return SimpleNamespace(
+                tables=[
+                    table
+                ]
+            )
+
+        def get_text(
+            self,
+            option: str,
+            *,
+            clip=None,
+        ) -> str:
+            assert option == "text"
+
+            if clip is None:
+                return (
+                    "表格前正文\n"
+                    "业务类型 期交\n"
+                    "个人 35%\n"
+                    "表格后正文"
+                )
+
+            if clip.y1 <= 200.0:
+                return "表格前正文"
+
+            if clip.y0 >= 400.0:
+                return "表格后正文"
+
+            return ""
+
+    class FakeDocument:
+        is_pdf = True
+        needs_pass = False
+        page_count = 1
+
+        def load_page(
+            self,
+            page_index: int,
+        ):
+            assert page_index == 0
+            return FakePage()
+
+        def close(
+            self,
+        ) -> None:
+            pass
+
+    monkeypatch.setattr(
+        text_parser_module.pymupdf,
+        "open",
+        lambda path: FakeDocument(),
+    )
+
+    source = _source_record(
+        path=pdf_path,
+        source_type="pdf",
+    )
+
+    question = _question(
+        source_type="pdf",
+        file_label="table.pdf",
+    )
+
+    parsed = (
+        parse_competition_text_document(
+            question=question,
+            source=source,
+            attachments_root=attachments,
+        )
+    )
+
+    assert [
+        block.block_type
+        for block in parsed.blocks
+    ] == [
+        "page_text",
+        "table",
+        "page_text",
+    ]
+
+    table_block = parsed.blocks[1]
+
+    assert table_block.page == 1
+    assert table_block.table_index == 0
+
+    assert table_block.pdf_bbox == (
+        100.0,
+        200.0,
+        500.0,
+        400.0,
+    )
+
+    assert table_block.table_rows == (
+        (
+            "业务类型",
+            "期交",
+        ),
+        (
+            "个人",
+            "35%",
+        ),
+    )
+
+    page_text = "\n".join(
+        block.text
+        for block in parsed.blocks
+        if block.block_type
+        == "page_text"
+    )
+
+    assert "表格前正文" in page_text
+    assert "表格后正文" in page_text
+
+    # 表格内容不能再次出现在page_text中。
+    assert "35%" not in page_text
+
+
+def test_parse_pdf_fails_when_table_detection_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attachments = (
+        tmp_path
+        / "attachments"
+    )
+
+    attachments.mkdir()
+
+    pdf_path = (
+        attachments
+        / "broken-table.pdf"
+    )
+
+    pdf_path.write_bytes(
+        b"%PDF-fake-broken-table"
+    )
+
+    class FakePage:
+        rect = pymupdf.Rect(
+            0.0,
+            0.0,
+            600.0,
+            800.0,
+        )
+
+        def find_tables(
+            self,
+        ):
+            raise RuntimeError(
+                "table detector failed"
+            )
+
+        def get_text(
+            self,
+            option: str,
+            *,
+            clip=None,
+        ) -> str:
+            return "测试正文"
+
+    class FakeDocument:
+        is_pdf = True
+        needs_pass = False
+        page_count = 1
+
+        def load_page(
+            self,
+            page_index: int,
+        ):
+            return FakePage()
+
+        def close(
+            self,
+        ) -> None:
+            pass
+
+    monkeypatch.setattr(
+        text_parser_module.pymupdf,
+        "open",
+        lambda path: FakeDocument(),
+    )
+
+    source = _source_record(
+        path=pdf_path,
+        source_type="pdf",
+    )
+
+    question = _question(
+        source_type="pdf",
+        file_label="broken-table.pdf",
+    )
+
+    with pytest.raises(
+        CompetitionTextParserError,
+        match="PDF表格检测失败",
+    ):
+        parse_competition_text_document(
+            question=question,
+            source=source,
+            attachments_root=attachments,
+        )
 
 def test_parse_docx_preserves_paragraph_table_order(
     tmp_path: Path,
