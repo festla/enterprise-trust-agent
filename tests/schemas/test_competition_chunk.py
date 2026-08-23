@@ -400,3 +400,210 @@ def test_word_table_chunk_rejects_inconsistent_row_range(
             table_rows=rows,
             table_format="table",
         )
+
+def test_pdf_table_chunk_preserves_page_bbox_and_rows(
+) -> None:
+    source = _pdf_source()
+
+    rows = (
+        (
+            "业务类型",
+            "期交",
+        ),
+        (
+            "个人",
+            "35%",
+        ),
+    )
+
+    text = (
+        "业务类型\t期交\n"
+        "个人\t35%"
+    )
+
+    chunk = CompetitionTextChunk(
+        chunk_id="chunk:test:00000",
+        source_id=source.source_id,
+        doc_id=source.doc_id,
+        source_type="pdf",
+        chunk_index=0,
+        chunk_type="table",
+        source_spans=(
+            CompetitionChunkSourceSpan(
+                block_id="block:test:00020",
+                block_index=20,
+                start_char=0,
+                end_char=len(text),
+            ),
+        ),
+        text=text,
+        char_count=len(text),
+        text_sha256=_sha(text),
+        page_start=5,
+        page_end=5,
+        pdf_bbox=(
+            100.0,
+            200.0,
+            500.0,
+            400.0,
+        ),
+        table_index=0,
+        table_row_start=0,
+        table_row_end=1,
+        table_rows=rows,
+        table_format="table",
+    )
+
+    assert chunk.source_type == "pdf"
+    assert chunk.chunk_type == "table"
+    assert chunk.page_start == 5
+    assert chunk.page_end == 5
+
+    assert chunk.pdf_bbox == (
+        100.0,
+        200.0,
+        500.0,
+        400.0,
+    )
+
+    assert chunk.table_rows == rows
+
+
+def test_pdf_table_chunk_requires_bbox(
+) -> None:
+    source = _pdf_source()
+
+    rows = (
+        (
+            "项目",
+            "金额",
+        ),
+        (
+            "资本保证金",
+            "100",
+        ),
+    )
+
+    text = (
+        "项目\t金额\n"
+        "资本保证金\t100"
+    )
+
+    with pytest.raises(
+        ValidationError,
+        match="pdf_bbox",
+    ):
+        CompetitionTextChunk(
+            chunk_id="chunk:test:00000",
+            source_id=source.source_id,
+            doc_id=source.doc_id,
+            source_type="pdf",
+            chunk_index=0,
+            chunk_type="table",
+            source_spans=(
+                CompetitionChunkSourceSpan(
+                    block_id="block:test:00020",
+                    block_index=20,
+                    start_char=0,
+                    end_char=len(text),
+                ),
+            ),
+            text=text,
+            char_count=len(text),
+            text_sha256=_sha(text),
+            page_start=3,
+            page_end=3,
+            table_index=0,
+            table_row_start=0,
+            table_row_end=1,
+            table_rows=rows,
+            table_format="table",
+        )
+
+
+def test_pdf_text_chunk_rejects_pdf_bbox(
+) -> None:
+    source = _pdf_source()
+
+    text = "普通 PDF 正文"
+
+    with pytest.raises(
+        ValidationError,
+        match="pdf_bbox",
+    ):
+        CompetitionTextChunk(
+            chunk_id="chunk:test:00000",
+            source_id=source.source_id,
+            doc_id=source.doc_id,
+            source_type="pdf",
+            chunk_index=0,
+            chunk_type="text",
+            source_spans=(
+                CompetitionChunkSourceSpan(
+                    block_id="block:test:00000",
+                    block_index=0,
+                    start_char=0,
+                    end_char=len(text),
+                ),
+            ),
+            text=text,
+            char_count=len(text),
+            text_sha256=_sha(text),
+            page_start=1,
+            page_end=1,
+            pdf_bbox=(
+                10.0,
+                20.0,
+                100.0,
+                200.0,
+            ),
+        )
+
+
+def test_word_table_chunk_rejects_pdf_bbox(
+) -> None:
+    source = _word_source()
+
+    rows = (
+        (
+            "项目",
+            "金额",
+        ),
+    )
+
+    text = "项目\t金额"
+
+    with pytest.raises(
+        ValidationError,
+        match="pdf_bbox",
+    ):
+        CompetitionTextChunk(
+            chunk_id="chunk:test:00000",
+            source_id=source.source_id,
+            doc_id=source.doc_id,
+            source_type="word",
+            chunk_index=0,
+            chunk_type="table",
+            source_spans=(
+                CompetitionChunkSourceSpan(
+                    block_id="block:test:00020",
+                    block_index=20,
+                    start_char=0,
+                    end_char=len(text),
+                ),
+            ),
+            text=text,
+            char_count=len(text),
+            text_sha256=_sha(text),
+            pdf_bbox=(
+                10.0,
+                20.0,
+                100.0,
+                200.0,
+            ),
+            table_index=0,
+            table_row_start=0,
+            table_row_end=0,
+            table_rows=rows,
+            table_format="table",
+        )

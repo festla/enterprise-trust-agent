@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 from typing import (
     Literal,
     Self,
@@ -200,6 +201,15 @@ class CompetitionTextChunk(
         ge=1,
     )
 
+    # PDF 表格在原页面中的坐标：
+    # x0, y0, x1, y1
+    pdf_bbox: tuple[
+        float,
+        float,
+        float,
+        float,
+    ] | None = None
+
     # ========================================================
     # Word Location
     # ========================================================
@@ -373,13 +383,36 @@ class CompetitionTextChunk(
                 is not None
                 or self.paragraph_end_index
                 is not None
-                or self.table_index
-                is not None
             ):
                 raise ValueError(
                     "PDF Chunk 不能包含 "
-                    "Word 位置信息"
+                    "Word 段落位置信息"
                 )
+
+            if self.pdf_bbox is not None:
+                (
+                    x0,
+                    y0,
+                    x1,
+                    y1,
+                ) = self.pdf_bbox
+
+                if not all(
+                    math.isfinite(value)
+                    for value in self.pdf_bbox
+                ):
+                    raise ValueError(
+                        "pdf_bbox 不能包含 "
+                        "非有限数值"
+                    )
+
+                if (
+                    x1 <= x0
+                    or y1 <= y0
+                ):
+                    raise ValueError(
+                        "pdf_bbox 坐标范围无效"
+                    )
 
         # ====================================================
         # Word
@@ -395,6 +428,12 @@ class CompetitionTextChunk(
                     "page_start/page_end"
                 )
 
+            if self.pdf_bbox is not None:
+                raise ValueError(
+                    "Word Chunk 不能包含 "
+                    "pdf_bbox"
+                )
+
         # ====================================================
         # Text Chunk
         # ====================================================
@@ -404,6 +443,12 @@ class CompetitionTextChunk(
                 raise ValueError(
                     "text Chunk 不能包含 "
                     "table_rows"
+                )
+
+            if self.pdf_bbox is not None:
+                raise ValueError(
+                    "text Chunk 不能包含 "
+                    "pdf_bbox"
                 )
 
             table_metadata = (
@@ -442,11 +487,6 @@ class CompetitionTextChunk(
         # ====================================================
 
         if self.chunk_type == "table":
-            if self.source_type != "word":
-                raise ValueError(
-                    "当前 table Chunk "
-                    "只支持 Word"
-                )
 
             if self.table_index is None:
                 raise ValueError(
@@ -504,6 +544,15 @@ class CompetitionTextChunk(
                 raise ValueError(
                     "table Chunk 不能包含 "
                     "paragraph 位置信息"
+                )
+
+            if (
+                self.source_type == "pdf"
+                and self.pdf_bbox is None
+            ):
+                raise ValueError(
+                    "PDF table Chunk 必须提供 "
+                    "pdf_bbox"
                 )
 
             if self.table_format is None:
