@@ -164,6 +164,70 @@ def test_build_and_load_corpus_round_trip(
         == result.manifest
     )
 
+def test_build_corpus_preserves_zero_chunk_type(
+    tmp_path: Path,
+) -> None:
+    original_document = (
+        _chunk_document()
+    )
+
+    text_only_document = (
+        CompetitionChunkDocument(
+            source=(
+                original_document.source
+            ),
+            chunks=tuple(
+                chunk
+                for chunk
+                in original_document.chunks
+                if (
+                    chunk.chunk_type
+                    == "text"
+                )
+            ),
+        )
+    )
+
+    result = (
+        build_competition_chunk_corpus(
+            documents=(
+                text_only_document,
+            ),
+            output_root=tmp_path,
+        )
+    )
+
+    assert (
+        result.manifest.chunk_type_counts
+        == {
+            "text": 1,
+            "table": 0,
+        }
+    )
+
+    assert (
+        result.manifest.text_chunk_count
+        == 1
+    )
+
+    assert (
+        result.manifest.table_chunk_count
+        == 0
+    )
+
+    loaded = (
+        load_competition_chunk_corpus(
+            result.corpus_directory
+        )
+    )
+
+    assert (
+        loaded.manifest.chunk_type_counts
+        == {
+            "text": 1,
+            "table": 0,
+        }
+    )
 
 def test_build_corpus_requires_source_sha256(
     tmp_path: Path,

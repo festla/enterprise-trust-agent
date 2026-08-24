@@ -311,12 +311,16 @@ def _build_manifest(
                 for record in source_records
             )
         ),
-        "chunk_type_counts": dict(
-            Counter(
-                chunk.chunk_type
+        "chunk_type_counts": {
+            "text": sum(
+                chunk.chunk_type == "text"
                 for chunk in chunks
-            )
-        ),
+            ),
+            "table": sum(
+                chunk.chunk_type == "table"
+                for chunk in chunks
+            ),
+        },
         "source_records": (
             source_records
         ),
