@@ -13,13 +13,28 @@ PROJECT_ROOT = (
     .parents[1]
 )
 
+SOURCE_FILTERED_BASELINE_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "competition"
+    / "processed"
+    / "eval"
+    / (
+        "competition_bm25_gold_"
+        "source_filtered_dev_v1.json"
+    )
+)
+
 SPARSE_FINAL_PATH = (
     PROJECT_ROOT
     / "data"
     / "competition"
     / "processed"
     / "eval"
-    / "competition_bm25_structured_context_dev_v1.json"
+    / (
+        "competition_bm25_structured_context_"
+        "source_filtered_dev_v1.json"
+    )
 )
 
 DENSE_COMPLEMENTARITY_PATH = (
@@ -30,8 +45,7 @@ DENSE_COMPLEMENTARITY_PATH = (
     / "eval"
     / (
         "competition_dense_sparse_"
-        "source_filtered_"
-        "complementarity_dev_v1.json"
+        "final_complementarity_dev_v1.json"
     )
 )
 
@@ -50,17 +64,14 @@ EXPECTED_EVIDENCE_MODE_COUNTS = {
 
 EXPECTED_COMPLETE_COUNTS = {
     "single_chunk": 54,
-    "parent_child": 33,
+    "parent_child": 35,
     "multi_chunk": 4,
 }
 
-EXPECTED_DIRECT_COUNT = 95
-EXPECTED_COMPLETE_COUNT = 91
+EXPECTED_DIRECT_COUNT = 97
+EXPECTED_COMPLETE_COUNT = 93
 
-# Frozen baseline:
-# reported GoldRecall@10 = 0.9464
-MIN_GOLD_RECALL = 0.9463
-
+MIN_GOLD_RECALL = 0.9834
 
 @dataclass(
     frozen=True,
@@ -317,6 +328,27 @@ def _calculate_sparse_metrics(
         ),
     }
 
+def _check_source_routing(
+    baseline: dict[str, Any],
+) -> AcceptanceCheck:
+    enabled = baseline.get(
+        "resolved_source_only"
+    )
+
+    return AcceptanceCheck(
+        name="resolved_source_routing",
+        passed=(
+            enabled is True
+        ),
+        detail=(
+            "source-scoped retrieval enabled"
+            if enabled is True
+            else (
+                "resolved_source_only="
+                f"{enabled!r}"
+            )
+        ),
+    )
 
 def _check_artifact_identity(
     sparse: dict[str, Any],
@@ -788,6 +820,10 @@ def main() -> None:
         )
     )
 
+    source_baseline = _load_json(
+        SOURCE_FILTERED_BASELINE_PATH
+    )
+
     checks = (
         _check_artifact_identity(
             sparse,
@@ -810,6 +846,9 @@ def main() -> None:
         ),
         _check_dense_no_go(
             dense
+        ),
+        _check_source_routing(
+            source_baseline
         ),
     )
 

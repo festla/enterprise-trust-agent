@@ -23,6 +23,7 @@ from app.schemas.competition_gold import (
 )
 from app.schemas.competition_retrieval import (
     CompetitionBM25Hit,
+    CompetitionRetrievalFilter,
 )
 from app.services.competition_bm25_index import (
     CompetitionBM25IndexResult,
@@ -121,6 +122,7 @@ class CompetitionBM25GoldDevResult:
     cutoffs: tuple[int, ...]
     top_k: int
     output_path: Path
+    resolved_source_only: bool
 
 
 def _sha256_file(path: Path) -> str:
@@ -342,6 +344,7 @@ def _evaluate_mode(
     index_result: CompetitionBM25IndexResult,
     top_k: int,
     cutoffs: tuple[int, ...],
+    resolved_source_only: bool,
 ) -> CompetitionBM25GoldModeResult:
     tokenizer = DeterministicChineseBigramTokenizer(
         spec=index_result.manifest.tokenizer_spec
@@ -365,10 +368,21 @@ def _evaluate_mode(
             mode=query_mode,
         )
 
+        filters = (
+            CompetitionRetrievalFilter(
+                source_ids=(
+                    resolution.source_id,
+                ),
+            )
+            if resolved_source_only
+            else None
+        )
+
         hits = index_result.index.search(
             query=query,
             tokenizer=tokenizer,
             top_k=top_k,
+            filters=filters,
         )
 
         fact_results = tuple(
@@ -559,6 +573,9 @@ def _build_output_payload(
         "top_k": result.top_k,
         "query_uses_gold_fact_text": False,
         "modes": modes,
+        "resolved_source_only": (
+            result.resolved_source_only
+        ),
     }
 
 
@@ -579,6 +596,7 @@ def run_competition_bm25_gold_dev(
     expected_fact_count: int | None = (
         DEFAULT_EXPECTED_FACTS
     ),
+    resolved_source_only: bool = False,
 ) -> CompetitionBM25GoldDevResult:
     normalized_cutoffs = tuple(
         sorted(set(cutoffs))
@@ -694,6 +712,9 @@ def run_competition_bm25_gold_dev(
             index_result=index_result,
             top_k=top_k,
             cutoffs=normalized_cutoffs,
+            resolved_source_only=(
+                resolved_source_only
+            ),
         )
         for query_mode in (
             "question_only",
@@ -716,6 +737,9 @@ def run_competition_bm25_gold_dev(
         cutoffs=normalized_cutoffs,
         top_k=top_k,
         output_path=output_path,
+        resolved_source_only=(
+            resolved_source_only
+        ),
     )
 
     output_path.parent.mkdir(
@@ -905,6 +929,15 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default=DEFAULT_TOP_K,
     )
 
+    parser.add_argument(
+        "--resolved-source-only",
+        action="store_true",
+        help=(
+            "仅在 Source Resolver "
+            "定位的附件内执行 BM25"
+        ),
+    )
+
     return parser
 
 
@@ -925,6 +958,9 @@ def main(
         index_directory=arguments.index,
         output_path=arguments.output,
         top_k=arguments.top_k,
+        resolved_source_only=(
+            arguments.resolved_source_only
+        ),
     )
 
     print_gold_dev_result(result)

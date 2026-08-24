@@ -1163,15 +1163,15 @@ def run(
             sparse_summary[
                 "direct_hit_count"
             ]
-            != 95
+            != 97
             or sparse_summary[
                 "complete_gold_count"
             ]
-            != 91
+            != 93
         ):
             raise RuntimeError(
                 "Sparse Final 指标不是 "
-                "6B2 Frozen Baseline："
+                "Resolved-Source Frozen Baseline："
                 f"{sparse_summary}"
             )
 
