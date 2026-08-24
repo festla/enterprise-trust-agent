@@ -11,6 +11,7 @@ from app.schemas.competition_gold import (
 )
 from app.schemas.competition_retrieval import (
     CompetitionBM25Hit,
+    CompetitionDenseHit,
 )
 from app.schemas.competition_text import (
     CompetitionTextBlock,
@@ -392,3 +393,44 @@ def test_rejects_duplicate_hit_rank_and_chunk_id(
                 repeated_chunk,
             ),
         )
+
+def test_gold_eval_accepts_dense_hits(
+) -> None:
+    bm25_hit = _hit(
+        source_number=1,
+        text="Dense 直接证据。",
+        rank=1,
+    )
+
+    dense_hit = CompetitionDenseHit(
+        rank=1,
+        score=0.92,
+        chunk=bm25_hit.chunk,
+    )
+
+    record = _record(
+        case_id="Q199",
+        evidence_mode="single_chunk",
+        references=(
+            CompetitionGoldChunkReference(
+                chunk_id=(
+                    dense_hit.chunk_id
+                ),
+                role="direct",
+            ),
+        ),
+    )
+
+    result = (
+        evaluate_competition_gold_fact(
+            record=record,
+            hits=(dense_hit,),
+        )
+    )
+
+    assert result.direct_hit_at(1)
+    assert result.complete_gold_hit_at(1)
+    assert (
+        result.gold_chunk_recall_at(1)
+        == 1.0
+    )

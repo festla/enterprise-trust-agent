@@ -7,10 +7,27 @@ from app.schemas.competition_gold import (
     CompetitionGoldEvidenceMode,
     CompetitionGoldFactRecord,
 )
-from app.schemas.competition_retrieval import (
-    CompetitionBM25Hit,
-)
+from typing import Protocol
 
+class CompetitionGoldRetrievalHit(
+    Protocol
+):
+    """
+    Gold Retrieval Eval 所需的最小 Hit 接口。
+
+    BM25 / Dense / Hybrid 只要能够提供：
+        rank
+        chunk_id
+    就可以共享同一套 Gold 评测逻辑。
+    """
+
+    rank: int
+
+    @property
+    def chunk_id(
+        self,
+    ) -> str:
+        ...
 
 @dataclass(frozen=True, slots=True)
 class CompetitionGoldChunkMatch:
@@ -189,7 +206,7 @@ def evaluate_competition_gold_fact(
     *,
     record: CompetitionGoldFactRecord,
     hits: tuple[
-        CompetitionBM25Hit,
+        CompetitionGoldRetrievalHit,
         ...,
     ],
 ) -> CompetitionGoldFactRetrievalResult:

@@ -138,3 +138,52 @@ class CompetitionBM25Hit(
         self,
     ) -> CompetitionChunkType:
         return self.chunk.chunk_type
+
+class CompetitionDenseHit(
+    BaseModel
+):
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        allow_inf_nan=False,
+    )
+
+    schema_version: Literal[1] = 1
+
+    rank: int = Field(
+        ge=1,
+    )
+
+    # Cosine Similarity 理论范围 [-1, 1]
+    score: float = Field(
+        ge=-1.0,
+        le=1.0,
+    )
+
+    retriever_type: Literal[
+        "dense"
+    ] = "dense"
+
+    score_type: Literal[
+        "cosine_similarity"
+    ] = "cosine_similarity"
+
+    chunk: CompetitionTextChunk
+
+    @property
+    def chunk_id(self) -> str:
+        return self.chunk.chunk_id
+
+    @property
+    def source_id(self) -> str:
+        return self.chunk.source_id
+
+    @property
+    def doc_id(self) -> str:
+        return self.chunk.doc_id
+
+    @property
+    def chunk_type(
+        self,
+    ) -> CompetitionChunkType:
+        return self.chunk.chunk_type
