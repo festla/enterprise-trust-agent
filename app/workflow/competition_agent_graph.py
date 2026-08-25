@@ -8,6 +8,12 @@ from langgraph.graph import (
     StateGraph,
 )
 
+from app.services.competition_excel_runtime import (
+    CompetitionExcelRuntimeResources,
+)
+from app.workflow.competition_excel_nodes import (
+    build_excel_solver_node,
+)
 from app.workflow.competition_decision_nodes import (
     build_answer_node,
     build_sufficiency_node,
@@ -16,6 +22,7 @@ from app.workflow.competition_decision_nodes import (
     deterministic_refuse_node,
     readiness_node,
     semantic_refuse_node,
+    failed_result_node,
 )
 from app.workflow.competition_runtime import (
     CompetitionAgentModelResources,
@@ -40,25 +47,40 @@ def route_after_source_resolution(
     state: CompetitionAgentState,
 ) -> Literal[
     "retrieval",
+    "excel_solver",
     "readiness",
 ]:
-    """
-    Source 找不到时：
+    resolution = state.get(
+        "source_resolution"
+    )
 
-    不进入 Retrieval，
-    直接交给 Readiness，
-    最终生成 source_unresolved refusal。
-    """
-
-    if (
-        state.get(
-            "source_resolution"
-        )
-        is None
-    ):
+    # Source 无法安全定位
+    if resolution is None:
         return "readiness"
 
-    return "retrieval"
+    question = state[
+        "question"
+    ]
+
+    if (
+        question.source_type
+        == "excel"
+    ):
+        return "excel_solver"
+
+    if (
+        question.source_type
+        in {
+            "word",
+            "pdf",
+        }
+    ):
+        return "retrieval"
+
+    raise RuntimeError(
+        "未知 Competition source_type："
+        f"{question.source_type}"
+    )
 
 
 def route_after_readiness(
@@ -80,12 +102,25 @@ def route_after_readiness(
 def route_after_sufficiency(
     state: CompetitionAgentState,
 ) -> Literal[
+    "failed",
     "refuse",
     "answer",
 ]:
-    assessment = state[
+    if (
+        state.get("failure")
+        is not None
+    ):
+        return "failed"
+
+    assessment = state.get(
         "sufficiency"
-    ]
+    )
+
+    if assessment is None:
+        raise RuntimeError(
+            "Sufficiency Router "
+            "缺少 sufficiency"
+        )
 
     if (
         assessment.status
@@ -99,24 +134,37 @@ def route_after_sufficiency(
 def route_after_answer(
     state: CompetitionAgentState,
 ) -> Literal[
+    "failed",
     "conflict",
     "citation",
 ]:
+    if (
+        state.get("failure")
+        is not None
+    ):
+        return "failed"
+
     sufficiency = state[
         "sufficiency"
     ]
 
-    answer = state[
+    answer = state.get(
         "answer"
-    ]
+    )
+
+    if answer is None:
+        raise RuntimeError(
+            "Answer Router "
+            "缺少 answer"
+        )
 
     if (
         sufficiency.supported_answer
         is None
     ):
         raise RuntimeError(
-            "sufficient 状态"
-            "缺少 supported_answer"
+            "sufficient 状态缺少 "
+            "supported_answer"
         )
 
     if (
@@ -127,6 +175,27 @@ def route_after_answer(
 
     return "citation"
 
+def route_after_citation(
+    state: CompetitionAgentState,
+) -> Literal[
+    "failed",
+    "complete",
+]:
+    if (
+        state.get("failure")
+        is not None
+    ):
+        return "failed"
+
+    if (
+        state.get("result")
+        is None
+    ):
+        raise RuntimeError(
+            "Citation 成功后缺少 result"
+        )
+
+    return "complete"
 
 # ============================================================
 # Graph
@@ -137,6 +206,9 @@ def build_competition_agent_graph(
     *,
     runtime_resources: (
         CompetitionAgentRuntimeResources
+    ),
+    excel_resources: (
+        CompetitionExcelRuntimeResources
     ),
     model_resources: (
         CompetitionAgentModelResources
@@ -219,6 +291,26 @@ def build_competition_agent_graph(
     )
 
     # ========================================================
+    # failed_node
+    # ========================================================
+
+    builder.add_node(
+        "failed",
+        failed_result_node,
+    )
+
+    # ========================================================
+    # excel solver node
+    # ========================================================
+
+    builder.add_node(
+        "excel_solver",
+        build_excel_solver_node(
+            excel_resources
+        ),
+    )
+
+    # ========================================================
     # Graph Flow
     # ========================================================
 
@@ -234,6 +326,9 @@ def build_competition_agent_graph(
         {
             "retrieval": (
                 "retrieval"
+            ),
+            "excel_solver": (
+                "excel_solver"
             ),
             "readiness": (
                 "readiness"
@@ -276,6 +371,7 @@ def build_competition_agent_graph(
         "sufficiency",
         route_after_sufficiency,
         {
+            "failed": "failed",
             "refuse": (
                 "semantic_refuse"
             ),
@@ -295,6 +391,7 @@ def build_competition_agent_graph(
         "answer",
         route_after_answer,
         {
+            "failed": "failed",
             "conflict": (
                 "conflict_refuse"
             ),
@@ -305,12 +402,26 @@ def build_competition_agent_graph(
     )
 
     builder.add_edge(
+        "excel_solver",
+        "citation",
+    )
+
+    builder.add_edge(
         "conflict_refuse",
         END,
     )
 
-    builder.add_edge(
+    builder.add_conditional_edges(
         "citation",
+        route_after_citation,
+        {
+            "failed": "failed",
+            "complete": END,
+        },
+    )
+
+    builder.add_edge(
+        "failed",
         END,
     )
 

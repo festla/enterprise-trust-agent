@@ -18,7 +18,10 @@ from app.schemas.competition_answer import (
 from app.schemas.competition_citation import (
     CompetitionCitationBundle,
 )
-
+from app.schemas.competition_agent_execution import (
+    CompetitionAgentFailureCode,
+    CompetitionAgentStage,
+)
 
 CompetitionRefusalCode = Literal[
     "source_unresolved",
@@ -185,11 +188,65 @@ class CompetitionRefusedResult(
         min_length=1,
     )
 
+class CompetitionFailedResult(
+    BaseModel
+):
+    """
+    Agent Runtime 未能成功完成请求。
+
+    failed != refused
+
+    refused：
+        Agent 正常判断证据不足。
+
+    failed：
+        Provider / Validation /
+        Runtime 出现执行故障。
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        str_strip_whitespace=True,
+    )
+
+    schema_version: Literal[1] = 1
+
+    status: Literal[
+        "failed"
+    ] = "failed"
+
+    case_id: str = Field(
+        pattern=r"^Q[0-9]{3}$",
+    )
+
+    answer_text: str = (
+        "系统暂时无法可靠完成请求。"
+    )
+
+    failure_stage: (
+        CompetitionAgentStage
+    )
+
+    failure_code: (
+        CompetitionAgentFailureCode
+    )
+
+    retryable: bool
+
+    error_type: str = Field(
+        min_length=1,
+    )
+
+    error_message: str = Field(
+        min_length=1,
+    )
 
 CompetitionExecutionResult = Annotated[
     (
         CompetitionAnsweredResult
         | CompetitionRefusedResult
+        | CompetitionFailedResult
     ),
     Field(
         discriminator="status"

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import operator
+
 from typing import (
+    Annotated,
     Required,
     TypedDict,
 )
@@ -25,6 +28,15 @@ from app.schemas.competition_runtime_result import (
 )
 from app.schemas.competition_sufficiency import (
     CompetitionEvidenceSufficiencyAssessment,
+)
+from app.schemas.competition_agent_execution import (
+    CompetitionAgentFailure,
+    CompetitionAgentTraceEvent,
+)
+
+
+from app.services.competition_excel_runtime import (
+    CompetitionExcelRuntimeResult,
 )
 from app.services.competition_text_retrieval import (
     CompetitionTextRetrievalResult,
@@ -116,4 +128,22 @@ class CompetitionAgentState(
     result: (
         CompetitionAnsweredResult
         | CompetitionRefusedResult
+    )
+
+    trace: Annotated[
+        tuple[
+            CompetitionAgentTraceEvent,
+            ...
+        ],
+        operator.add,
+    ]
+
+    failure: CompetitionAgentFailure
+
+    # =========================
+    # Excel
+    # =========================
+
+    excel_runtime: (
+        CompetitionExcelRuntimeResult
     )

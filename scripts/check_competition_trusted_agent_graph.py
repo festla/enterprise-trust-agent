@@ -19,6 +19,9 @@ from app.workflow.competition_text_graph import (
 from app.workflow.competition_agent_graph import (
     build_competition_agent_graph,
 )
+from app.services.competition_excel_runtime import (
+    load_competition_excel_runtime_resources,
+)
 
 QA_FILE = Path(
     "data/competition/private/qa/QA数据.xlsx"
@@ -124,9 +127,20 @@ def main() -> None:
         load_competition_agent_model_resources_from_environment()
     )
 
+    excel_resources = (
+        load_competition_excel_runtime_resources(
+            attachments_root=(
+                ATTACHMENTS_ROOT
+            )
+        )
+    )
+
     graph = build_competition_agent_graph(
         runtime_resources=(
             runtime_resources
+        ),
+        excel_resources=(
+            excel_resources
         ),
         model_resources=(
             model_resources
@@ -261,6 +275,26 @@ def main() -> None:
     print(
         "TRUSTED AGENT GRAPH PASS"
     )
+
+    trace = final_state.get(
+        "trace",
+        (),
+    )
+
+    print()
+    print(
+        "Execution Trace:"
+    )
+
+    for index, event in enumerate(
+        trace,
+        start=1,
+    ):
+        print(
+            f"  {index}. "
+            f"{event.stage}: "
+            f"{event.outcome}"
+        )
 
 if __name__ == "__main__":
     main()

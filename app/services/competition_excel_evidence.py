@@ -10,6 +10,9 @@ from app.schemas.competition import (
     CompetitionQuestion,
     CompetitionSourceRecord,
 )
+from app.schemas.competition_answer import (
+    CompetitionFinalAnswer,
+)
 from app.schemas.competition_evidence import (
     CompetitionCalculationTrace,
     CompetitionEvidence,
@@ -251,4 +254,162 @@ def build_excel_calculation_evidence_bundle(
             end,
         ),
         calculation=calculation,
+    )
+
+CompetitionExcelSolverResult = (
+    CompetitionExcelLookupResult
+    | CompetitionExcelCompareResult
+    | CompetitionExcelCalculationResult
+)
+
+
+class CompetitionExcelEvidenceBuildError(
+    RuntimeError
+):
+    pass
+
+
+def build_competition_excel_evidence_bundle(
+    *,
+    question: CompetitionQuestion,
+    source: CompetitionSourceRecord,
+    result: CompetitionExcelSolverResult,
+    attachments_root: Path,
+) -> CompetitionEvidenceBundle:
+    """
+    Excel Solver Result
+        ↓
+    统一 CompetitionEvidenceBundle
+
+    底层仍复用已有：
+        Lookup Evidence Builder
+        Compare Evidence Builder
+        Calculation Evidence Builder
+    """
+
+    if isinstance(
+        result,
+        CompetitionExcelLookupResult,
+    ):
+        return (
+            build_excel_lookup_evidence_bundle(
+                question=question,
+                source=source,
+                result=result,
+                attachments_root=(
+                    attachments_root
+                ),
+            )
+        )
+
+    if isinstance(
+        result,
+        CompetitionExcelCompareResult,
+    ):
+        return (
+            build_excel_compare_evidence_bundle(
+                question=question,
+                source=source,
+                result=result,
+                attachments_root=(
+                    attachments_root
+                ),
+            )
+        )
+
+    if isinstance(
+        result,
+        CompetitionExcelCalculationResult,
+    ):
+        return (
+            build_excel_calculation_evidence_bundle(
+                question=question,
+                source=source,
+                result=result,
+                attachments_root=(
+                    attachments_root
+                ),
+            )
+        )
+
+    raise CompetitionExcelEvidenceBuildError(
+        "未知 Excel Solver Result"
+    )
+
+def build_competition_excel_final_answer(
+    *,
+    question: CompetitionQuestion,
+    result: CompetitionExcelSolverResult,
+    evidence_bundle: CompetitionEvidenceBundle,
+    solver_type: str,
+) -> CompetitionFinalAnswer:
+    """
+    把确定性 Excel Solver 的输出
+    转成统一 CompetitionFinalAnswer。
+
+    Excel Solver 本身已经确定答案，
+    因此这里不再调用 LLM。
+    """
+
+    answer_option = (
+        result.answer_option
+    )
+
+    if answer_option is None:
+        raise CompetitionExcelEvidenceBuildError(
+            "Excel Solver "
+            "无法唯一确定答案选项"
+        )
+
+    evidence_ids = tuple(
+        evidence.evidence_id
+        for evidence
+        in evidence_bundle.evidences
+    )
+
+    if not evidence_ids:
+        raise CompetitionExcelEvidenceBuildError(
+            "Excel Answer "
+            "缺少 Evidence"
+        )
+
+    citation_ids = tuple(
+        f"E{index}"
+        for index in range(
+            1,
+            len(evidence_ids) + 1,
+        )
+    )
+
+    answer_text = (
+        result.answer_text.strip()
+    )
+
+    if not answer_text:
+        answer_text = (
+            question.options[
+                answer_option
+            ]
+        )
+
+    return CompetitionFinalAnswer(
+        case_id=(
+            question.case_id
+        ),
+        answer=(
+            answer_option
+        ),
+        answer_text=(
+            answer_text
+        ),
+        citation_ids=(
+            citation_ids
+        ),
+        evidence_ids=(
+            evidence_ids
+        ),
+        generator_id=(
+            "competition_excel_solver:"
+            f"{solver_type}"
+        ),
     )

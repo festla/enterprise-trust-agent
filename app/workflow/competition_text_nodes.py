@@ -4,6 +4,10 @@ from collections.abc import (
     Callable,
 )
 
+from app.schemas.competition_agent_execution import (
+    CompetitionAgentTraceEvent,
+)
+
 from app.services.competition_evidence_assembler import (
     assemble_competition_evidence_bundle,
 )
@@ -75,11 +79,38 @@ def build_source_resolution_node(
                 "source_resolution_error": (
                     str(exc)
                 ),
+                "trace": (
+                    CompetitionAgentTraceEvent(
+                        stage="source_resolution",
+                        outcome="business_blocked",
+                        message=(
+                            "Source could not be resolved"
+                        ),
+                        details={
+                            "error": str(exc),
+                        },
+                    ),
+                ),
             }
 
         return {
-            "source_resolution": (
-                resolution
+            "source_resolution": resolution,
+            "trace": (
+                CompetitionAgentTraceEvent(
+                    stage="source_resolution",
+                    outcome="success",
+                    message=(
+                        "Source resolved successfully"
+                    ),
+                    details={
+                        "source_id": (
+                            resolution.source_id
+                        ),
+                        "strategy": (
+                            resolution.strategy
+                        ),
+                    },
+                ),
             ),
         }
 
@@ -153,6 +184,29 @@ def build_retrieval_node(
 
         return {
             "retrieval": retrieval,
+            "trace": (
+                CompetitionAgentTraceEvent(
+                    stage="retrieval",
+                    outcome="success",
+                    message=(
+                        "Frozen sparse retrieval completed"
+                    ),
+                    details={
+                        "question_only_hits": len(
+                            retrieval.question_only_hits
+                        ),
+                        "option_hits": len(
+                            retrieval.question_with_options_hits
+                        ),
+                        "seed_hits": len(
+                            retrieval.seed_hits
+                        ),
+                        "expanded_hits": len(
+                            retrieval.expanded_hits
+                        ),
+                    },
+                ),
+            ),
         }
 
     return retrieval_node
@@ -192,7 +246,21 @@ def build_evidence_assembly_node(
             )
 
         if not retrieval.expanded_hits:
-            return {}
+            return {
+                "trace": (
+                    CompetitionAgentTraceEvent(
+                        stage="evidence_assembly",
+                        outcome="success",
+                        message=(
+                            "No retrieval hits available "
+                            "for evidence assembly"
+                        ),
+                        details={
+                            "evidence_count": 0,
+                        },
+                    ),
+                ),
+            }
 
         evidence_bundle = (
             assemble_competition_evidence_bundle(
@@ -215,6 +283,26 @@ def build_evidence_assembly_node(
             "evidence_bundle": (
                 evidence_bundle
             ),
+            "trace": (
+                CompetitionAgentTraceEvent(
+                    stage="evidence_assembly",
+                    outcome="success",
+                    message=(
+                        "Evidence bundle assembled"
+                    ),
+                    details={
+                        "evidence_count": len(
+                            evidence_bundle.evidences
+                        ),
+                        "evidence_chars": sum(
+                            len(
+                                evidence.raw_content
+                            )
+                            for evidence
+                            in evidence_bundle.evidences
+                        ),
+                    },
+                ),
+            ),
         }
-
     return evidence_assembly_node
