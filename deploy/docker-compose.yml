@@ -1,0 +1,24 @@
+services:
+  competition-agent:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+
+    image: enterprise-trust-agent:competition
+
+    container_name: enterprise-trust-agent
+
+    env_file:
+      - ../.env
+
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - competition-checkpoints:/app/data/runtime/checkpoints
+
+    restart: unless-stopped
+
+
+volumes:
+  competition-checkpoints:

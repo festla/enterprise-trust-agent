@@ -23,6 +23,23 @@ GET  /health
 POST /api/competition/answer
 ```
 
+当前 Competition Runtime 使用：
+
+- 冻结 BM25 检索索引
+- 确定性 Excel Solver
+- LangGraph Agent Workflow
+- Qwen OpenAI-compatible API
+
+Competition Docker Runtime 不依赖本地：
+
+- PyTorch
+- Transformers
+- sentence-transformers
+- CUDA
+- GPU 推理环境
+
+文本答案生成与证据充分性判断通过百炼 OpenAI-compatible API 调用 Qwen 模型完成。
+
 ---
 
 ## 2. Deployment Environment
@@ -34,24 +51,53 @@ OS: Ubuntu 22.04
 Architecture: x86_64
 CPU: >= 4 cores
 Memory: >= 16 GB
-Disk: >= 30 GB
+Disk: >= 10 GB
 Docker: supported Linux Docker Engine
 ```
 
-当前 Competition Runtime 不依赖本地 GPU 推理。
+当前 Competition Runtime 不依赖本地 GPU。
 
-文本回答和证据充分性判断通过百炼 OpenAI-compatible API
-调用 Qwen 模型。
-
-因此部署环境需要能够访问配置的：
+部署机器需要能够访问：
 
 ```text
 DASHSCOPE_API_BASE
 ```
 
+例如：
+
+```text
+https://dashscope.aliyuncs.com/compatible-mode/v1
+```
+
 ---
 
-## 3. Required Runtime Data
+## 3. Deployment Structure
+
+Competition 部署相关文件：
+
+```text
+enterprise-trust-agent/
+│
+├── deploy/
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   └── requirements-competition.txt
+│
+├── .env.example
+├── .dockerignore
+├── DEPLOY.md
+│
+├── app/
+├── main.py
+│
+└── data/
+```
+
+`deploy/requirements-competition.txt` 仅包含 Competition Runtime 所需依赖，不包含本地深度学习推理依赖。
+
+---
+
+## 4. Required Runtime Data
 
 运行服务需要以下数据：
 
@@ -72,12 +118,13 @@ data/
                 └── competition_bm25_index_07bc5262330bc2a5/
 ```
 
-`deploy/attachments` 使用 Linux-safe 短文件名，
-并通过 `source_manifest.json` 保留原始逻辑文件身份。
+`deploy/attachments` 使用 Linux-safe 短文件名，并通过 `source_manifest.json` 保留原始逻辑文件身份。
+
+这些 Runtime Data 会在构建 Docker Image 时复制到镜像内部。
 
 ---
 
-## 4. Environment Variables
+## 5. Environment Variables
 
 复制环境变量模板：
 
@@ -85,7 +132,7 @@ data/
 cp .env.example .env
 ```
 
-填写：
+配置模型：
 
 ```dotenv
 DASHSCOPE_API_KEY=YOUR_API_KEY
@@ -93,7 +140,7 @@ DASHSCOPE_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
 QWEN_MODEL=qwen3.8-max
 ```
 
-Competition Runtime 路径：
+配置 Competition Runtime 路径：
 
 ```dotenv
 COMPETITION_ATTACHMENTS_ROOT=data/competition/deploy/attachments
@@ -102,51 +149,67 @@ COMPETITION_INDEX_DIR=data/competition/processed/indexes/bm25/competition_bm25_i
 COMPETITION_CHECKPOINT_DB=data/runtime/checkpoints/competition_agent.sqlite3
 ```
 
-不要提交真实 `.env` 文件。
+不要提交包含真实 API Key 的 `.env` 文件。
 
 ---
 
-## 5. Docker Deployment
+## 6. Docker Deployment
 
-### 5.1 Build Image
+### 6.1 Build Image
 
-如果提交包中没有预构建镜像：
+在项目根目录执行：
 
 ```bash
 docker build \
+  -f deploy/Dockerfile \
   -t enterprise-trust-agent:competition \
   .
 ```
 
-### 5.2 Create Checkpoint Volume
+当前 Competition Docker 仅安装实际运行所需依赖，不安装 PyTorch、Transformers、sentence-transformers 或 CUDA Runtime。
+
+### 6.2 Recommended: Docker Compose
+
+推荐使用 Docker Compose 启动：
 
 ```bash
-docker volume create \
-  enterprise-trust-agent-checkpoints
+docker compose \
+  -f deploy/docker-compose.yml \
+  up -d
 ```
 
-该 Volume 用于持久化 SQLite Agent Checkpoint。
+如果需要重新构建镜像：
 
-### 5.3 Start Service
+```bash
+docker compose \
+  -f deploy/docker-compose.yml \
+  up -d --build
+```
+
+Compose 会自动创建用于持久化 Agent Checkpoint 的 Docker Volume。
+
+### 6.3 Docker Run
+
+也可以直接启动：
 
 ```bash
 docker run -d \
   --name enterprise-trust-agent \
   --env-file .env \
-  -e COMPETITION_ATTACHMENTS_ROOT=data/competition/deploy/attachments \
-  -e COMPETITION_CORPUS_DIR=data/competition/processed/corpora/competition_corpus_8cbec682dfce4962 \
-  -e COMPETITION_INDEX_DIR=data/competition/processed/indexes/bm25/competition_bm25_index_07bc5262330bc2a5 \
-  -e COMPETITION_CHECKPOINT_DB=data/runtime/checkpoints/competition_agent.sqlite3 \
   -v enterprise-trust-agent-checkpoints:/app/data/runtime/checkpoints \
   -p 8000:8000 \
   enterprise-trust-agent:competition
 ```
 
+Docker 会自动创建不存在的 named volume。
+
 当前推荐单进程运行，不配置多个 Uvicorn workers。
 
 ---
 
-## 6. Health Check
+## 7. Health Check
+
+执行：
 
 ```bash
 curl http://127.0.0.1:8000/health
@@ -162,14 +225,63 @@ curl http://127.0.0.1:8000/health
 }
 ```
 
-只有 `ready=true` 时，Competition Agent Runtime
-才已经完成初始化。
+只有 `ready=true` 时，Competition Agent Runtime 才已经完成初始化。
 
 ---
 
-## 7. Logs
+## 8. API Smoke Test
 
-查看运行日志：
+项目中提供 Competition API Smoke Test：
+
+```bash
+uv run --env-file .env \
+  python -m scripts.check_competition_api
+```
+
+Smoke Test 检查：
+
+```text
+GET /health
+
+Word Case Q105
+    HTTP=200
+    status=answered
+    answer correct
+    citation valid
+
+Excel Case Q003
+    HTTP=200
+    status=answered
+    answer correct
+    citation valid
+```
+
+成功时输出：
+
+```text
+COMPETITION API SMOKE PASS
+```
+
+当前 Slim Docker 已完成：
+
+```text
+Q105 Word  PASS
+Q003 Excel PASS
+```
+
+---
+
+## 9. Logs
+
+Docker Compose：
+
+```bash
+docker compose \
+  -f deploy/docker-compose.yml \
+  logs -f
+```
+
+Docker CLI：
 
 ```bash
 docker logs -f enterprise-trust-agent
@@ -177,13 +289,23 @@ docker logs -f enterprise-trust-agent
 
 ---
 
-## 8. Stop Service
+## 10. Stop Service
+
+Docker Compose：
+
+```bash
+docker compose \
+  -f deploy/docker-compose.yml \
+  down
+```
+
+Docker CLI：
 
 ```bash
 docker stop enterprise-trust-agent
 ```
 
-如需重新启动：
+重新启动：
 
 ```bash
 docker start enterprise-trust-agent
@@ -191,12 +313,9 @@ docker start enterprise-trust-agent
 
 ---
 
-## 9. Offline Docker Image Deployment
+## 11. Offline Docker Image Deployment
 
-为避免部署环境现场访问 Docker Hub，
-推荐同时提供预构建 Docker Image。
-
-构建完成后：
+导出镜像：
 
 ```bash
 docker save \
@@ -204,58 +323,125 @@ docker save \
   enterprise-trust-agent:competition
 ```
 
-部署机器执行：
+部署服务器加载：
 
 ```bash
 docker load \
   -i enterprise-trust-agent-competition.tar
 ```
 
-然后按照第 5.3 节启动服务。
+然后使用 `.env` 启动服务：
 
-这种方式不需要现场重新下载 Python Base Image
-或 Python Dependencies。
+```bash
+docker run -d \
+  --name enterprise-trust-agent \
+  --env-file .env \
+  -v enterprise-trust-agent-checkpoints:/app/data/runtime/checkpoints \
+  -p 8000:8000 \
+  enterprise-trust-agent:competition
+```
+
+这种方式不需要在部署服务器重新下载 Python Base Image 或 Python Dependencies。
 
 ---
 
-## 10. Direct Python Deployment
+## 12. Direct Python Deployment
 
-如果部署环境不使用 Docker，也可以直接运行：
+Docker 是推荐部署方式。
+
+如果部署环境不使用 Docker，可以只安装 Competition Runtime 所需依赖。
+
+创建虚拟环境：
 
 ```bash
-uv sync --frozen --no-dev
+python3 -m venv .venv
 ```
 
-然后：
+激活：
 
 ```bash
-uv run --env-file .env \
-  uvicorn main:app \
+source .venv/bin/activate
+```
+
+安装 Competition Runtime：
+
+```bash
+python -m pip install \
+  -r deploy/requirements-competition.txt
+```
+
+加载环境变量：
+
+```bash
+set -a
+source .env
+set +a
+```
+
+启动：
+
+```bash
+uvicorn main:app \
   --host 0.0.0.0 \
   --port 8000
 ```
 
+Direct Python Deployment 同样不需要安装 PyTorch、Transformers 或 sentence-transformers。
+
 ---
 
-## 11. Deployment Validation
+## 13. Deployment Validation
 
-部署完成后至少检查：
+最终部署至少需要通过：
 
 ```text
-GET /health
+1. Service Startup
+    Application startup complete
+
+2. Health Check
+    GET /health
     status=ok
     ready=true
 
-Word / PDF Question
+3. Word / PDF Question
     HTTP=200
     status=answered
     citation valid
 
-Excel Question
+4. Excel Question
     HTTP=200
     status=answered
     citation valid
+
+5. Checkpoint
+    SQLite checkpoint directory writable
 ```
 
-开发阶段已经使用 Word Case Q105 和
-Excel Case Q003 完成 Docker API Smoke Test。
+当前 Competition Slim Docker 已完成本地验证：
+
+```text
+Health:
+    ready=true
+
+Word Q105:
+    HTTP=200
+    status=answered
+    prediction=A
+    citation=PASS
+
+Excel Q003:
+    HTTP=200
+    status=answered
+    prediction=A
+    citation=PASS
+```
+
+同时确认 Slim Runtime 中不存在：
+
+```text
+torch
+sentence_transformers
+transformers
+```
+
+说明当前 Competition Deployment 不依赖本地深度学习推理环境。
