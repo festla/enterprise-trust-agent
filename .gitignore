@@ -70,3 +70,4 @@ dist/
 # Confidential competition data
 data/competition/private/
 data/competition/processed/
+data/competition/deploy/

@@ -19,6 +19,40 @@ class CompetitionSourceCatalogError(
 ):
     pass
 
+def _is_deployment_storage_path(
+    source: CompetitionSourceRecord,
+) -> bool:
+    """
+    判断 Source 是否使用 Linux-safe 部署物理文件名。
+
+    部署包允许：
+
+        actual_filename:
+            原始逻辑文件名，用于 Source Resolver 匹配
+
+        relative_path:
+            files/src_<source_id>.<ext>
+            实际 Linux-safe 物理路径
+
+    只允许我们约定的确定性命名规则，
+    不允许任意文件名绕过 Catalog 校验。
+    """
+
+    relative_path = Path(
+        source.relative_path
+    )
+
+    expected_filename = (
+        f"{source.source_id}"
+        f"{source.extension}"
+    )
+
+    return (
+        relative_path.parent.as_posix()
+        == "files"
+        and relative_path.name
+        == expected_filename
+    )
 
 def resolve_competition_source_path(
     *,
@@ -67,14 +101,67 @@ def resolve_competition_source_path(
             f"{resolved}"
         ) from exc
 
+    # ========================================================
+    # Filename invariant
+    #
+    # 开发数据：
+    #
+    #   relative_path == actual_filename
+    #
+    # 部署数据：
+    #
+    #   actual_filename
+    #       保留原始逻辑文件名，用于 Source Resolver；
+    #
+    #   relative_path
+    #       使用 Linux-safe 的短物理文件名：
+    #       files/src_<id>.<ext>
+    #
+    # 因此部署模式不能继续要求：
+    #
+    #   resolved.name == actual_filename
+    #
+    # 但仍然必须严格校验物理文件名符合我们定义的
+    # source_id + extension 规则。
+    # ========================================================
+
+    relative_filename = (
+        Path(
+            source.relative_path
+        ).name
+    )
+
     if (
         resolved.name
-        != source.actual_filename
+        != relative_filename
     ):
         raise CompetitionSourceCatalogError(
-            "Source filename 与实际文件名不一致: "
-            f"record={source.actual_filename}; "
+            "Source relative_path 与实际文件名不一致: "
+            f"relative={relative_filename}; "
             f"actual={resolved.name}"
+        )
+
+    logical_filename_matches = (
+        resolved.name
+        == source.actual_filename
+    )
+
+    deployment_filename_matches = (
+        _is_deployment_storage_path(
+            source
+        )
+    )
+
+    if (
+        not logical_filename_matches
+        and not deployment_filename_matches
+    ):
+        raise CompetitionSourceCatalogError(
+            "Source filename 不符合开发目录"
+            "或部署目录约束: "
+            f"logical={source.actual_filename}; "
+            f"physical={resolved.name}; "
+            f"relative={source.relative_path}"
         )
 
     actual_size = (

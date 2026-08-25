@@ -5,6 +5,7 @@ import re
 import unicodedata
 from pathlib import Path
 from typing import Protocol
+import json
 
 from app.schemas.competition import (
     CompetitionResolutionStrategy,
@@ -118,6 +119,142 @@ def _build_source_id(
 
     return f"src_{digest}"
 
+_DEPLOYMENT_SOURCE_MANIFEST_FILENAME = (
+    "source_manifest.json"
+)
+
+
+def _load_deployment_source_manifest(
+    attachments_root: Path,
+) -> tuple[
+    CompetitionSourceRecord,
+    ...,
+] | None:
+    """
+    加载 Linux-safe 部署附件 Manifest。
+
+    Manifest 中：
+    - source_id 保留原始附件 source_id
+    - actual_filename 保留原始文件名，用于 Resolver 匹配
+    - relative_path 指向部署目录中的短物理文件名
+
+    如果不存在 Manifest，则返回 None，
+    继续使用原有目录扫描逻辑。
+    """
+
+    manifest_path = (
+        attachments_root
+        / _DEPLOYMENT_SOURCE_MANIFEST_FILENAME
+    )
+
+    if not manifest_path.exists():
+        return None
+
+    try:
+        payload = json.loads(
+            manifest_path.read_text(
+                encoding="utf-8"
+            )
+        )
+    except (
+        OSError,
+        json.JSONDecodeError,
+    ) as exc:
+        raise CompetitionSourceResolverError(
+            "无法读取部署附件 Manifest: "
+            f"{manifest_path}"
+        ) from exc
+
+    raw_sources = payload.get(
+        "sources"
+    )
+
+    if not isinstance(
+        raw_sources,
+        list,
+    ):
+        raise CompetitionSourceResolverError(
+            "部署附件 Manifest 缺少 "
+            "sources 列表"
+        )
+
+    records = tuple(
+        CompetitionSourceRecord.model_validate(
+            item
+        )
+        for item in raw_sources
+    )
+
+    if not records:
+        raise CompetitionSourceResolverError(
+            "部署附件 Manifest "
+            "不包含 Source"
+        )
+
+    source_ids = [
+        record.source_id
+        for record in records
+    ]
+
+    if (
+        len(source_ids)
+        != len(set(source_ids))
+    ):
+        raise CompetitionSourceResolverError(
+            "部署附件 Manifest "
+            "包含重复 source_id"
+        )
+
+    relative_paths = [
+        record.relative_path
+        for record in records
+    ]
+
+    if (
+        len(relative_paths)
+        != len(set(relative_paths))
+    ):
+        raise CompetitionSourceResolverError(
+            "部署附件 Manifest "
+            "包含重复 relative_path"
+        )
+
+    root = attachments_root.resolve()
+
+    for record in records:
+        physical_path = (
+            attachments_root
+            / record.relative_path
+        ).resolve()
+
+        try:
+            physical_path.relative_to(
+                root
+            )
+        except ValueError as exc:
+            raise CompetitionSourceResolverError(
+                "部署附件 Manifest "
+                "包含越界路径: "
+                f"{record.relative_path}"
+            ) from exc
+
+        if not physical_path.is_file():
+            raise CompetitionSourceResolverError(
+                "部署附件文件不存在: "
+                f"{record.relative_path}"
+            )
+
+        if (
+            physical_path.stat().st_size
+            != record.size_bytes
+        ):
+            raise CompetitionSourceResolverError(
+                "部署附件大小与 Manifest "
+                "不一致: "
+                f"{record.relative_path}"
+            )
+
+    return records
 
 def build_competition_source_manifest(
     attachments_root: Path,
@@ -130,6 +267,15 @@ def build_competition_source_manifest(
             "附件目录不存在: "
             f"{attachments_root}"
         )
+
+    deployment_manifest = (
+        _load_deployment_source_manifest(
+            attachments_root
+        )
+    )
+
+    if deployment_manifest is not None:
+        return deployment_manifest
 
     records: list[
         CompetitionSourceRecord
