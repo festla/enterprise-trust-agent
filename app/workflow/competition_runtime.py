@@ -56,7 +56,7 @@ def _build_frozen_evidence_config(
     return (
         CompetitionEvidenceAssemblyConfig(
             max_evidences=48,
-            max_chars=4000,
+            max_chars=3000,
         )
     )
 
