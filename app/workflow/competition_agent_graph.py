@@ -7,6 +7,9 @@ from langgraph.graph import (
     START,
     StateGraph,
 )
+from langgraph.checkpoint.base import (
+    BaseCheckpointSaver,
+)
 
 from app.services.competition_excel_runtime import (
     CompetitionExcelRuntimeResources,
@@ -213,6 +216,10 @@ def build_competition_agent_graph(
     model_resources: (
         CompetitionAgentModelResources
     ),
+    checkpointer: (
+        BaseCheckpointSaver
+        | None
+    ) = None,
 ):
     """
     Competition Trusted Document Agent V1。
@@ -425,4 +432,6 @@ def build_competition_agent_graph(
         END,
     )
 
-    return builder.compile()
+    return builder.compile(
+        checkpointer=checkpointer,
+    )

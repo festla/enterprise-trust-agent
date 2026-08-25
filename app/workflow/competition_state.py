@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-import operator
+from collections.abc import (
+    Sequence,
+)
 
 from typing import (
     Annotated,
@@ -42,6 +44,49 @@ from app.services.competition_text_retrieval import (
     CompetitionTextRetrievalResult,
 )
 
+def merge_competition_trace(
+    left: (
+        Sequence[
+            CompetitionAgentTraceEvent
+        ]
+        | None
+    ),
+    right: (
+        Sequence[
+            CompetitionAgentTraceEvent
+        ]
+        | None
+    ),
+) -> tuple[
+    CompetitionAgentTraceEvent,
+    ...,
+]:
+    """
+    LangGraph Trace reducer。
+
+    Checkpoint serializer 在恢复状态时，
+    sequence 可能以 list 形式返回，
+    而 Node Runtime 当前使用 tuple 写入。
+
+    因此 reducer 不直接使用 operator.add，
+    而是在合并前统一转换为 tuple：
+
+        list  + tuple
+        tuple + list
+        list  + list
+        tuple + tuple
+
+    都得到稳定 tuple。
+    """
+
+    return (
+        tuple(
+            left or ()
+        )
+        + tuple(
+            right or ()
+        )
+    )
 
 class CompetitionAgentState(
     TypedDict,
@@ -135,7 +180,7 @@ class CompetitionAgentState(
             CompetitionAgentTraceEvent,
             ...
         ],
-        operator.add,
+        merge_competition_trace,
     ]
 
     failure: CompetitionAgentFailure
