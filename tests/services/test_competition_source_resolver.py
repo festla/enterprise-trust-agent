@@ -4,6 +4,7 @@ import pytest
 
 from app.schemas.competition import (
     CompetitionQaCase,
+    CompetitionQuestion,
 )
 from app.services.competition_source_resolver import (
     CompetitionSourceResolver,
@@ -201,3 +202,55 @@ def test_source_resolver_refuses_ambiguous_title(
         CompetitionSourceResolverError
     ):
         resolver.resolve(case)
+
+def test_source_resolver_accepts_safe_question(
+    tmp_path: Path,
+) -> None:
+    source = (
+        tmp_path
+        / "145_测试法规_测试法规.docx"
+    )
+
+    source.write_bytes(b"test")
+
+    manifest = (
+        build_competition_source_manifest(
+            tmp_path
+        )
+    )
+
+    question = CompetitionQuestion(
+        case_id="Q201",
+        source_type="word",
+        qa_type="单事实检索",
+        question="测试问题？",
+        option_a="A",
+        option_b="B",
+        option_c="C",
+        option_d="D",
+        source_title="测试法规",
+        file_label="测试法规.docx",
+    )
+
+    resolution = (
+        CompetitionSourceResolver(
+            manifest
+        ).resolve(
+            question
+        )
+    )
+
+    assert (
+        resolution.source_id
+        .startswith("src_")
+    )
+
+    assert (
+        resolution.relative_path
+        == source.name
+    )
+
+    assert (
+        resolution.strategy
+        == "exact_tail"
+    )

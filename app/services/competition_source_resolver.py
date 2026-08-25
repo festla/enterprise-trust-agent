@@ -4,15 +4,14 @@ import hashlib
 import re
 import unicodedata
 from pathlib import Path
+from typing import Protocol
 
 from app.schemas.competition import (
-    CompetitionQaCase,
     CompetitionResolutionStrategy,
     CompetitionSourceRecord,
     CompetitionSourceResolution,
     CompetitionSourceType,
 )
-
 
 _EXCEL_SUFFIXES = {
     ".xlsx",
@@ -35,6 +34,20 @@ class CompetitionSourceResolverError(
 ):
     pass
 
+class CompetitionSourceResolvable(
+    Protocol
+):
+    """
+    Source Resolver 所需的最小运行时契约。
+
+    不依赖 CompetitionQaCase，
+    因此不会要求 answer / evidence 等 Gold 字段。
+    """
+
+    case_id: str
+    source_type: CompetitionSourceType
+    source_title: str
+    file_label: str
 
 def _normalize_filename_key(
     value: str,
@@ -190,7 +203,7 @@ class CompetitionSourceResolver:
     def _build_resolution(
         self,
         *,
-        case: CompetitionQaCase,
+        case: CompetitionSourceResolvable,
         record: CompetitionSourceRecord,
         strategy: (
             CompetitionResolutionStrategy
@@ -210,7 +223,7 @@ class CompetitionSourceResolver:
 
     def resolve(
         self,
-        case: CompetitionQaCase,
+        case: CompetitionSourceResolvable,
     ) -> CompetitionSourceResolution:
         same_type_records = [
             record
