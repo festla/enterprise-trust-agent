@@ -71,3 +71,7 @@ dist/
 data/competition/private/
 data/competition/processed/
 data/competition/deploy/
+
+
+# Final competition submission artifacts
+submission/
