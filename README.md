@@ -1,377 +1,167 @@
-# Enterprise Trust Agent
+# Enterprise Trust Agent — Competition Edition
 
-面向企业年报与财务分析场景的 **可信、可验证、可追溯 Agent Runtime**。
+面向**银行业监管制度与统计报表**的可信问答系统。
 
-项目不让大模型自由生成财务事实，而是将 **结构化财务数据、文档检索、确定性计算、Agent 规划、证据验证、权限控制与安全审计** 组合成一套可执行、可恢复、可审计的企业文档分析系统。
+系统将 Word/PDF 文本检索与 Excel 确定性求解统一到同一套 Agent Runtime 中，重点解决三类问题：
 
----
+- **可信回答**：证据不足时拒答，不强行生成；
+- **证据可追溯**：答案可追溯到原始文件、章节/段落或表格证据；
+- **数值可靠**：Excel 取数、比较、计算由确定性 Solver 完成，不交给 LLM 自由计算。
 
-## 1. Current Status
-
-当前完成至：
-
-**Week 7 — Trust, Safety & Responsible AI Controls**
-
-工程回归：
+## 核心流程
 
 ```text
-963 passed
+Question
+  ↓
+Source Resolution
+  ├─ Word / PDF → BM25 Retrieval → Evidence → Sufficiency → LLM Answer
+  └─ Excel      → Deterministic Solver → Evidence
+                                      ↓
+                               Citation Binding
+                                      ↓
+                         Answered / Refused / Failed
 ```
 
-Runtime Control Dev V1：
+## 核心能力
+
+- Word / PDF 单事实、多事实检索问答
+- Excel 表格取数、比较、计算
+- Evidence Sufficiency Gate
+- Evidence / Citation 绑定
+- Answered / Refused / Failed 状态区分
+- LangGraph + SQLite Checkpoint / Resume
+- FastAPI + Docker 部署
+
+文本回答可返回：
 
 ```text
-Cases:                    50
-Passed:                   50 / 50
-Task Success Rate:        100%
-Replay Success:           46 / 46
+answer
+answer_text
+citation_ids
+evidence_ids
+source
+location
+raw_content
 ```
 
-Week 7 Safety Eval V1：
+因此可以从答案反向定位到原始证据。
 
-```text
-Cases:                             40
-Passed:                            40 / 40
+## 评测结果
 
-Trust Violation Detection Rate:    100%
-Prompt Injection Detection Rate:   100%
-Permission Denial Accuracy:        100%
-HITL Routing Accuracy:             100%
+最终 held-out evaluation：
 
-False Refusal Rate:                  0%
-Unsafe Answer Release Rate:          0%
-Overall Safety Success Rate:       100%
-```
-
-> 以上结果仅代表当前固定评测集上的表现，不表示系统对所有真实场景或攻击达到绝对安全。
-
----
-
-## 2. Project Architecture
-
-```text
-User Query
-    ↓
-RuntimeQueryParser
-    ↓
-RuntimeIntentRouter
-    ↓
-RuntimePlanner
-    ↓
-RBAC / Permission Gate
-    ↓
-RuntimePlanExecutor
-    ├── query_financial_data
-    ├── retrieve_documents
-    └── execute_calculation
-    ↓
-Prompt Injection Defense
-    ↓
-RuntimeEvidenceVerifier
-    ↓
-RuntimeAnswerDraftBuilder
-    ↓
-RuntimeTrustVerifier
-    ↓
-RuntimeRiskPolicy
-  ↙       ↓        ↘
-allow    refuse   require_human
-                      ↓
-                     HITL
-                      ↓
-RuntimeAnswerGenerator
-    ↓
-Generator Hard Gate
-    ↓
-Final Answer
-```
-
-运行过程同时保存：
-
-```text
-AgentState
-Checkpoint
-NodeSpan
-ToolCallTrace
-RetrievalTrace
-CalculationTrace
-VerificationReport
-PolicyDecision
-HumanReviewDecision
-AgentTrajectory
-```
-
----
-
-## 3. Core Capabilities
-
-### Structured Financial Query
-
-支持：
-
-- 财务事实查询；
-- 财务指标计算；
-- 跨期比较；
-- 文档证据分析；
-- 缺失信息澄清；
-- 不支持问题拒答。
-
-### Hybrid Document Retrieval
-
-```text
-Dense Retrieval
-+
-BM25
-↓
-RRF Fusion
-↓
-Cross-Encoder Reranker
-```
-
-用于风险、战略、管理层说明、经营情况和原因归因等叙述性问题。
-
-### Deterministic Calculation
-
-派生指标由确定性 Calculator 计算，而不是由 LLM 自由生成数值。
-
-例如：
-
-```text
-Revenue
-+
-Operating Cost
-↓
-Gross Profit Margin
-```
-
-计算过程保留 `formula_id`、`input_fact_ids`、结果和 Calculation Trace。
-
-### Recoverable Agent Runtime
-
-支持：
-
-```text
-run
-resume
-checkpoint
-idempotency
-trajectory replay
-```
-
-Agent 中断后可以从 Checkpoint 恢复，已成功执行的步骤不会无条件重复执行。
-
----
-
-## 4. Trust & Safety
-
-Week 7 增加多层独立安全控制。
-
-### Trust Verification
-
-最终答案先生成结构化 `AnswerDraft / Claim`，再验证：
-
-- Evidence 是否存在；
-- Claim 是否有事实支持；
-- 年份是否一致；
-- 单位是否一致；
-- 财务口径是否一致；
-- Calculation 输入是否一致；
-- Citation 是否匹配；
-- Evidence 是否冲突。
-
-验证失败时直接拒绝发布答案。
-
-### RBAC
-
-角色：
-
-```text
-viewer
-reviewer
-admin
-```
-
-权限：
-
-```text
-read_financial_data
-read_documents
-execute_calculation
-```
-
-模型选择 Tool 不等于拥有 Tool 权限，Runtime 会基于真实 UserRole 重新计算有效权限。
-
-### Prompt Injection Defense
-
-Retrieved Document 被视为 **Untrusted External Data**。
-
-当前检测：
-
-```text
-instruction_override
-system_prompt_extraction
-authority_hijacking
-tool_manipulation
-security_bypass
-```
-
-恶意文档在进入可信 Runtime State 前被拦截。
-
-### Risk Policy & HITL
-
-```text
-Verification FAIL
-→ refuse
-
-Verification PASS + low / medium
-→ allow
-
-Verification PASS + high
-→ require_human
-```
-
-高风险任务可以进入人工审核：
-
-```text
-approve → resume → answer
-reject  → refused
-```
-
-人工审批不能覆盖 Trust Verification Failure。
-
-### Generator Hard Gate
-
-即使调用方绕过 AgentRuntime 直接调用 Answer Generator，也必须重新满足：
-
-```text
-Verification PASS
-+
-Policy permits release
-+
-Human approval if required
-```
-
----
-
-## 5. Evaluation
-
-### Runtime Control Dev V1
-
-固定 50-case 控制流评测，覆盖：
-
-- Intent；
-- Argument；
-- Plan；
-- Tool Selection；
-- Tool Sequence；
-- Termination；
-- Replay。
-
-结果：
-
-```text
-50 / 50 passed
-```
-
-### Week 7 Safety Eval V1
-
-固定 40-case 安全评测：
-
-| Category | Count |
+| 指标 | 结果 |
 |---|---:|
-| Evidence / Citation | 6 |
-| Numeric / Scope | 6 |
-| RBAC | 5 |
-| Prompt Injection | 6 |
-| Unsupported / Boundary | 5 |
-| Risk / HITL | 6 |
-| Normal Safe | 6 |
-| **Total** | **40** |
+| Cases | 198 |
+| Correct | **195 / 198** |
+| Accuracy | **98.48%** |
+| Answered | 195 |
+| Refused | 2 |
+| Failed / Exception | 1 |
 
-结果：
+其中 **195 个 answered case 全部回答正确**。
+
+按数据源：
+
+| Source | Accuracy |
+|---|---:|
+| PDF | 67 / 67 |
+| Word | 62 / 64 |
+| Excel | 66 / 67 |
+
+> 以上结果仅代表固定 held-out evaluation 数据集。
+
+## 模型与部署
+
+文本证据充分性判断与答案生成通过阿里云百炼 OpenAI-compatible API 调用 Qwen：
+
+```dotenv
+QWEN_MODEL=qwen3.8-max
+```
+
+项目不依赖本地大模型权重，也不需要 GPU、CUDA、PyTorch、Transformers 或 sentence-transformers。
+
+正式 Docker Image：
 
 ```text
-40 / 40 passed
+enterprise-trust-agent:competition
 ```
 
-Safety Eval 曾实际发现并修复：
+镜像 Content Size 约 **231 MB**。
 
-1. Permission Snapshot Tampering 被拦截后错误分类为 `internal_error`；
-2. Unsupported Write Operation 被错误路由到支持型 Runtime。
-
-完整说明：
+已完成：
 
 ```text
-docs/week07/01_week7_acceptance.md
-docs/week07/02_responsible_ai_control_matrix.md
+Windows → Windows 跨设备部署  PASS
+Windows → Apple Silicon Mac   PASS
+真实 Agent API 请求            PASS
+Evidence / Citation 输出       PASS
 ```
 
----
+## 快速运行
 
-## 6. Quick Start
-
-安装依赖：
-
-```powershell
-uv sync
+```bash
+docker load -i docker/enterprise-trust-agent-competition.tar
+cp .env.example .env
 ```
 
-运行完整测试：
+填写：
 
-```powershell
-uv run pytest -q
+```dotenv
+DASHSCOPE_API_KEY=YOUR_API_KEY
 ```
 
-运行 Week 7 Safety Eval：
+启动：
 
-```powershell
-uv run pytest tests/services/test_runtime_safety_eval.py -s -q -k "full_real"
+```bash
+docker run -d   --name enterprise-trust-agent   --env-file .env   -v enterprise-trust-agent-checkpoints:/app/data/runtime/checkpoints   -p 8000:8000   enterprise-trust-agent:competition
 ```
 
----
-
-## 7. Project Structure
+检查：
 
 ```text
-app/
-├── schemas/          # Pydantic domain / runtime / trust schemas
-├── services/         # Runtime, tools, retrieval, trust & safety
-└── ...
-
-data/
-├── evaluation/
-└── processed/
-
-docs/
-├── week06/
-└── week07/
-
-tests/
-├── schemas/
-└── services/
+http://127.0.0.1:8000/health
+http://127.0.0.1:8000/docs
 ```
 
----
-
-## 8. Current Boundary
-
-当前项目已经具备完整的可信 Runtime 与安全控制基线，但仍有以下边界：
-
-- Prompt Injection Detector 主要基于 deterministic patterns；
-- Risk Classification 仍较粗粒度；
-- 尚未接入真实企业 IAM / SSO 权限系统；
-- Safety Eval V1 目前为固定 40-case；
-- 40/40 不等于对所有真实攻击绝对安全；
-- Retrieval、Citation Quality 与最终 Answer Quality 仍需继续扩大真实评测。
-
-后续能力建设应继续保持现有安全 Gate：
+项目提供两个示例请求：
 
 ```text
-Trust Verification
-RBAC
-Prompt Injection Defense
-Risk Policy
-HITL
-Generator Hard Gate
-Safety Regression
+samples/Q105.json   # Word
+samples/Q003.json   # Excel
 ```
+
+完整部署步骤见 `DEPLOY.md`。
+
+## 项目结构
+
+```text
+final_project/
+├── app/
+├── data/competition/
+├── deploy/
+├── docker/
+├── samples/
+├── scripts/
+├── tests/
+├── .env.example
+├── DEPLOY.md
+├── main.py
+└── pyproject.toml
+```
+
+## 安全说明
+
+提交包不包含：
+
+```text
+真实 .env
+真实 DASHSCOPE_API_KEY
+Gold Answer
+Held-out Evaluation Output
+本地 Checkpoint
+.git
+.venv
+```
+
+运行方只需提供自己的 DashScope API Key。
