@@ -2,6 +2,84 @@
 
 面向**银行业监管制度与统计报表**的可信问答系统。
 
+## 最终交付与快速部署
+
+本项目为比赛最终交付版本，已包含：
+
+- 完整 Agent 运行代码；
+- 比赛运行所需附件；
+- 已构建的文本 Corpus；
+- BM25 检索索引；
+- 已构建完成的 Docker 镜像。
+
+因此，如果仅需要运行系统，**无需安装 Python 依赖、无需重新执行 `docker build`，也无需额外下载数据或本地模型权重**。
+
+如果收到的是完整交付包：
+
+```bash
+tar -xzf zhixinyance_project.tar.gz
+cd final_project
+```
+
+如果已经进入 `final_project/` 目录，可直接从下面开始。
+
+准备环境变量。
+
+Linux / macOS：
+
+```bash
+cp .env.example .env
+```
+
+Windows PowerShell：
+
+```powershell
+Copy-Item .env.example .env
+```
+
+编辑 `.env`，填写部署方自己的模型服务配置：
+
+```dotenv
+QWEN_API_KEY=YOUR_API_KEY
+DASHSCOPE_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
+QWEN_MODEL=qwen3.8-max
+```
+
+代码优先读取 `QWEN_API_KEY`，同时保留 `DASHSCOPE_API_KEY` 作为向后兼容变量。
+
+如果部署方使用其他兼容的 HTTPS API 地址，只需相应修改 `DASHSCOPE_API_BASE`。
+
+加载预构建 Docker 镜像：
+
+```bash
+docker load -i docker/enterprise-trust-agent-competition.tar
+```
+
+启动服务：
+
+```bash
+docker run -d \
+  --name enterprise-trust-agent \
+  --env-file .env \
+  -v enterprise-trust-agent-checkpoints:/app/data/runtime/checkpoints \
+  -p 8000:8000 \
+  enterprise-trust-agent:competition
+```
+
+健康检查：
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+正常情况下应返回 `ready=true`。
+
+完整部署说明、API 调用方式和故障排查见 [`DEPLOY.md`](DEPLOY.md)。
+
+> 提交包不包含真实 API Key。部署方需要通过 `.env` 提供自己的 `QWEN_API_KEY`。
+
+## 系统架构
+
 系统将 Word/PDF 文本检索与 Excel 确定性求解统一到同一套 Agent Runtime 中：
 
 ```text
@@ -70,17 +148,25 @@ scripts/evaluate_competition_unified_agent_final.py
 Dev：
 
 ```bash
-uv run --env-file .env   python -m scripts.evaluate_competition_unified_agent_dev
+uv run --env-file .env \
+  python -m scripts.evaluate_competition_unified_agent_dev
 ```
 
 Held-out：
 
 ```bash
-uv run --env-file .env   python -m scripts.evaluate_competition_unified_agent_final   --route excel
+uv run --env-file .env \
+  python -m scripts.evaluate_competition_unified_agent_final \
+  --route excel
 
-uv run --env-file .env   python -m scripts.evaluate_competition_unified_agent_final   --route text   --resume
+uv run --env-file .env \
+  python -m scripts.evaluate_competition_unified_agent_final \
+  --route text \
+  --resume
 
-uv run --env-file .env   python -m scripts.evaluate_competition_unified_agent_final   --score
+uv run --env-file .env \
+  python -m scripts.evaluate_competition_unified_agent_final \
+  --score
 ```
 
 输出：
@@ -109,30 +195,13 @@ QWEN_MODEL=qwen3.8-max
 enterprise-trust-agent:competition
 ```
 
-## 快速运行
+预构建镜像位置：
 
-```bash
-docker load -i docker/enterprise-trust-agent-competition.tar
-cp .env.example .env
+```text
+docker/enterprise-trust-agent-competition.tar
 ```
 
-填写：
-
-```dotenv
-QWEN_API_KEY=YOUR_API_KEY
-DASHSCOPE_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
-QWEN_MODEL=qwen3.8-max
-```
-
-代码同时兼容旧变量 `DASHSCOPE_API_KEY`。
-
-启动：
-
-```bash
-docker run -d   --name enterprise-trust-agent   --env-file .env   -v enterprise-trust-agent-checkpoints:/app/data/runtime/checkpoints   -p 8000:8000   enterprise-trust-agent:competition
-```
-
-检查：
+服务启动后可访问：
 
 ```text
 http://127.0.0.1:8000/health
@@ -146,8 +215,6 @@ samples/Q105.json
 samples/Q003.json
 ```
 
-完整部署步骤见 `DEPLOY.md`。
-
 ## 项目结构
 
 ```text
@@ -156,6 +223,7 @@ final_project/
 ├── data/competition/
 ├── deploy/
 ├── docker/
+│   └── enterprise-trust-agent-competition.tar
 ├── samples/
 ├── scripts/
 ├── tests/
