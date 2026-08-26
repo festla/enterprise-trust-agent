@@ -92,6 +92,47 @@ def test_load_config_from_environment_mapping(
     assert config.enable_thinking is False
 
 
+def test_load_config_from_official_qwen_api_key(
+) -> None:
+    config = (
+        load_bailian_answer_provider_config(
+            environ={
+                "QWEN_API_KEY": "official-key",
+                "DASHSCOPE_API_BASE": (
+                    "https://example.com/v1"
+                ),
+                "QWEN_MODEL": "qwen3.8-max",
+            }
+        )
+    )
+
+    assert (
+        config.api_key.get_secret_value()
+        == "official-key"
+    )
+
+
+def test_qwen_api_key_takes_precedence(
+) -> None:
+    config = (
+        load_bailian_answer_provider_config(
+            environ={
+                "QWEN_API_KEY": "official-key",
+                "DASHSCOPE_API_KEY": "legacy-key",
+                "DASHSCOPE_API_BASE": (
+                    "https://example.com/v1"
+                ),
+                "QWEN_MODEL": "qwen3.8-max",
+            }
+        )
+    )
+
+    assert (
+        config.api_key.get_secret_value()
+        == "official-key"
+    )
+
+
 def test_missing_environment_variable_fails(
 ) -> None:
     with pytest.raises(

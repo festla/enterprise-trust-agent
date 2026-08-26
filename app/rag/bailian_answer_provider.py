@@ -70,6 +70,32 @@ def _require_environment_value(
     return value.strip()
 
 
+def _require_qwen_api_key(
+    *,
+    environ: Mapping[str, str],
+) -> str:
+    """
+    Prefer the official QWEN_API_KEY variable.
+
+    DASHSCOPE_API_KEY is retained as a
+    backward-compatible fallback.
+    """
+    for name in (
+        "QWEN_API_KEY",
+        "DASHSCOPE_API_KEY",
+    ):
+        value = environ.get(name)
+
+        if value is not None and value.strip():
+            return value.strip()
+
+    raise BailianAnswerProviderConfigError(
+        "Missing environment variable: "
+        "QWEN_API_KEY "
+        "(DASHSCOPE_API_KEY is also supported)"
+    )
+
+
 def load_bailian_answer_provider_config(
     *,
     environ: Mapping[str, str] | None = None,
@@ -87,9 +113,8 @@ def load_bailian_answer_provider_config(
     )
 
     return BailianAnswerProviderConfig(
-        api_key=_require_environment_value(
+        api_key=_require_qwen_api_key(
             environ=source,
-            name="DASHSCOPE_API_KEY",
         ),
         api_base=_require_environment_value(
             environ=source,

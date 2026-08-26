@@ -25,10 +25,25 @@ def _require_environment(
     return value.strip()
 
 
-def main() -> None:
-    api_key = _require_environment(
-        "DASHSCOPE_API_KEY"
+def _require_qwen_api_key() -> str:
+    for name in (
+        "QWEN_API_KEY",
+        "DASHSCOPE_API_KEY",
+    ):
+        value = os.getenv(name)
+
+        if value is not None and value.strip():
+            return value.strip()
+
+    raise BailianConnectionCheckError(
+        "Missing environment variable: "
+        "QWEN_API_KEY "
+        "(DASHSCOPE_API_KEY is also supported)"
     )
+
+
+def main() -> None:
+    api_key = _require_qwen_api_key()
 
     base_url = _require_environment(
         "DASHSCOPE_API_BASE"
